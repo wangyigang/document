@@ -10,7 +10,7 @@
 
 3. 主要解决的问题：可以轻松写出高效稳定的并发程序，程序员不用过多的考虑线程，锁和资源竞争细节
 
-  ![image](D:\GitHubSpace\document\docs\other\1.png)
+  ![image](.\other\1.png)
 
 ##### Akka中Actor模型
 actor简化了并发编程，提升程序性能
@@ -23,7 +23,7 @@ actor简化了并发编程，提升程序性能
 - 消息的处理方式由接收方的actor决定，发送消息的actor可以阻塞等待或异步处理
 - actorSystem的职责负责管理并创建actor，actorsystem是一个单例的[工厂模式],一个JVM进程中有一个即可，而actor是可以有多个的
 
-  ![image](D:\GitHubSpace\document\docs\other\2.png)
+  ![image](.\other\2.png)
 
 ##### 示意图
 
@@ -34,7 +34,7 @@ actor简化了并发编程，提升程序性能
 
 3. 消息通过actorRef发送后，会首先发送给Dispatcher Message(消息分发器),Dispatcher Message得到消息后，会将消息发送到对应的MailBox。dispatcher Message可以理解为一个线程池，mailbox可以理解成是消息队列，可以缓冲多个消息，遵循FIFO
 
-   ![image](D:\GitHubSpace\document\docs\other\3.png)
+   ![image](.\other\3.png)
 
 
 
