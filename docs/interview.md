@@ -57,3 +57,5 @@
 10. 格式化hadoop namenode-format
 11. 启动节点start-all.sh
 
+
+
