@@ -36,6 +36,27 @@
 5. Nothing是所有类型的子类
 6. Scala中，Unit类型比较特殊，这个类型也只有一个实例()
 
+### 函数式编程介绍
+
+- 函数式编程是一种编程范式
+- 它属于结构化编程的一种，主要思想是把运算过程尽量携程一系列嵌套的函数调用
+- 函数式编程中，将函数当做数据类型，因此可以接受函数当做输入(参数)和输出(返回值)
+- 函数式编程中，最重要的就是函数
+
+##### 函数/方法的定义
+
+###### 基本语法
+
+```
+def 函数名([参数名:参数类型]...)[[:返回值类型]=]{
+	语句...
+	返回值  //如果没有return ,默认以执行到最后一行的结果作为返回值
+}
+```
+
+###### 过程
+
+将函数的返回类型为Unit的函数成为过程(procedure)
 
 
 
@@ -43,10 +64,7 @@
 
 
 
-
-
-
-#### 数据结构上
+## 数据结构上
 
 ##### 数据结构特点
 
@@ -433,7 +451,7 @@ TODO--Set
 
 
 
-### 数据结构下-集合应用操作
+## 数据结构下-集合应用操作
 
 ##### 集合元素的映射-map映射操作
 
@@ -454,9 +472,90 @@ TODO--Set
   }
 ```
 
+```
+/*
+请将 val names = List("Alice", "Bob", "Nick") 中的所有单词，全部转成字母大写，返回到新的List集合中.
+ */
+object MapTest01 {
+  def main(args: Array[String]): Unit = {
+    val names=List("Alice","Bob","Nick")
+    val names2 = names.map(upper)
+    println("names2="+names2)
+  }
+  def upper(str:String):String={
+    str.toUpperCase
+  }
+}
+
+```
+
+##### flatmap映射：flat即压扁，亚平，扁平化映射
+
+###### 基本介绍
+
+> 效果是将集合中的每个元素的子元素映射到某个函数并返回新的集合
+
+```
+object FlatMapTest01 {
+  def main(args: Array[String]): Unit = {
+    val names = List("Alice","Bob","Nick")
+    //作用于集合中每个元素的子元素--映射到新的集合中
+    println(names.flatMap(upper))
+  }
+  def upper(s:String) ={
+    s.toUpperCase
+  }
+}
+```
+
+##### 集合元素的过滤-filter
+
+> 基本介绍：filter，将符合要求的数据(筛选)放置到新的集合中
+
+案例：将集合首字母为"C"的筛选到新的集合中
+
+```
+/*
+将  val names = List("pangdi", "wangyg", "Com") 集合中首字母为'C'的筛选到新的集合
+ */
+object FilterTest {
+  def main(args: Array[String]): Unit = {
+    val names = List("pangdi", "wangyg", "Com")
+    val list = names.filter(startC)
+    println("list="+list)
+  }
+  def startC(str:String) :Boolean={
+    if(str.startsWith("C"))  true else false
+  }
+}
+```
+
+##### 化简
+
+###### 基本定义：将二元函数引用于集合中的函数
+
+需求：求出list的和
+
+```
+object ReduceLeftTest {
+  def main(args: Array[String]): Unit = {
+    val list = List(1, 2, 3, 4, 5)
+    //方式一：
+    // val res = list.reduceLeft(f1)
+    //方式二：
+    val res = list.reduceLeft(_ + _)
+    println("res=" + res)
+  }
+
+  def f1(n1: Int, n2: Int): Int = {
+    n1 + n2
+  }
+}
+```
 
 
-#### 综合案例：WordCount
+
+##### 综合案例：WordCount
 
 
 
@@ -976,10 +1075,320 @@ case StartTimeOutWorker =>{
     }
 ```
 
+##### 泛型
+
+###### 基本介绍
+
+> 如果我们要求函数的参数接收任意类型，有使用泛型，这个类型可以代表任意的数据类型, 
+
+泛型案例：编写message类，可以构建Int类型的message，String类型的message
+
+```
+package day08
+
+object GenericUst {
+  def main(args: Array[String]): Unit = {
+    val mesg = new StrMessage[String]("10")
+    println("mesg="+mesg.get)
+    val mesg2 = new IntMessage[Int](20)
+    println("mesg2="+mesg2.get)
+  }
+}
+//定义抽象父类
+abstract class Message[T](s:T){
+  def get:T = s
+}
+//子类继承抽象父类
+class StrMessage[String](msg:String) extends Message(msg)
+
+class IntMessage[Int](msg:Int) extends Message(msg)
+```
+
+泛型案例2：
+
+```
+package day08
+
+import day08.SeasonEm.SeasonEm
+
+
+object GenericUst2 {
+  def main(args: Array[String]): Unit = {
+    //[指定泛型]
+    val cla01 = new EnglishClass[SeasonEm,String,String](SeasonEm.spring,"aaa","高级班")
+    println(cla01.season + " "+cla01.name+" "+cla01.classType)
+  }
+}
+/*设计一个EnglishClass(英语班级类),在创建Englishclass的一个实例
+需要制定[班级开班季节spring,autumn,summer,winter] 班级名称，班级类型
+开班季节只能是指定的，班级名称为String，班级类型是(字符串类型“高级班”，“初级班”..)
+或是Int类型（1,2,3)
+使用泛型来完成本案例
+*/
+object SeasonEm extends Enumeration{
+  type SeasonEm = Value //自定义seasionEm,是value类型，这样才能使用
+  val spring,summer,winter,autumn = Value
+}
+
+//根据业务需要，设计带有泛型的类
+class EnglishClass[A,B,C](val season:SeasonEm,val name:B, val classType:C)
+```
+
+泛型案例3：
+
+```
+object GenericUst3 {
+  def main(args: Array[String]): Unit = {
+    val list = List("hello","world","scala")
+    //获取list中间元素
+    println(getEle[String](list)) //调用函数时，可以限定类型
+  }
+  //返回值类型自动类型推倒
+  //T 使用泛型
+  def getEle[T](l:List[T]) ={
+    l(l.length/2) //返回list中间值
+  }
+}
+```
+
+##### 类型约束-上界/下界
+
+###### scala中上界
+
+> scala中表示某个类型是A类型的子类型，也称上界或上限，使用<: 关键字表示
+
+```scala
+[T<:A] 或使用通配符：[_<: A]
+```
+
+###### scala中下界
+
+```
+[T>:A]//A是T的下界，下限
+[_>:A] //通配符形式
+```
+
+视图界定
+
+基本介绍
+
+> <%的意思是view bounds(视图)  它比<:使用的范围更广，除了所有的子类，还允许隐式类型转换
+
+```scala
+	<%  --支持隐式转换
+```
+
+视图界定demo1
+
+```
+
+object ViewBoundsTest01 {
+  def main(args: Array[String]): Unit = {
+    //支持隐式类型转换--11.f为scala中的Float,不需要手动转换成java.lang.Float
+    val comparaComm = new CompareComm[java.lang.Float](11.1f, 10.3f)
+    println("comparaComm="+comparaComm.greater)
+  }
+}
+/*
+T <% Comparable[T] 表示视图界定
+T 是Comparable[T]子类型，同时也支持隐式类型转换
+ */
+class CompareComm[T<% Comparable[T]](obj1:T, obj2:T){
+  def greater = if (obj1.compareTo(obj2)>0) obj1 else obj2
+}
+```
+
+视图界定demo2
+
+```
+//package day08
+
+//定义Person类，进行两个Person对象比较
+class Person(val name: String, val age: Int) extends Ordered[Person] {
+  //重写Compare方法
+  override def compare(that: Person): Int = {
+    //1 省略return
+    println("compare方法被调用...")
+    this.age - that.age
+  }
+
+  //重写tostring 方法
+  override def toString: String = {
+    this.name + "\t" + this.age
+  }
+}
+
+//使用视图界定方式进行比较两个person类
+class CompareComm2[T <% Ordered[T]](obj1: T, obj2: T) {
+  def greater = if (obj1 > obj2) obj1 else obj2
+
+  //使用compareTo方法
+  def greater2 = if (obj1.compareTo(obj2) > 0) obj1 else obj2
+}
+
+object ViewBoundsTest02 {
+  def main(args: Array[String]): Unit = {
+
+    val jack = new Person("jack", 35)
+    val tom = new Person("tom", 30)
+    val compare = new CompareComm2(jack, tom)
+    println(compare.greater)
+
+  }
+}
+
+```
+
+##### 类型约束-上下文界定
+
+###### 基本介绍：
+
+> context bounds(上下文界定)也是隐式参数的语法糖，为语法上的方便，引入了上下文界定
+
+- 更加凸显了隐式值的价值
+
+案例：使用上下文界定+隐式参数的方式，比较两个Person对象的年龄大小，要求：使用Ordering实现比较
+
+```
+ordered和ordering的区别：
+Ordered继承了java中的Comparator接口，而Ordered继承了java中的Comparable接口，在Java中，Comparator是一个外部比较器(需要自己定义一个类实现比较器)，而Comparable是一个内部比较器，在类内部重载compareTO函数
+```
+
+上下文界定demo--要求：使用上下文界定+隐式参数的方式，比较大小
+
+```
+package com.atguigu.chapter17.contextbounds
+
+object ContextBoundsDemo {
+
+  //隐式参数
+  implicit val personComparetor = new Ordering[Person] {
+    override def compare(p1: Person, p2: Person): Int = {
+      println("隐式值的 personComparetor 比较器被调用")
+      p1.age - p2.age
+    }
+  }
+
+
+  def main(args: Array[String]): Unit = {
+
+    val p1 = new Person("mary", 30)
+    val p2 = new Person("smith", 35)
+
+    //完成p1 和 p2 的年龄的比较
+    //上下文界定有三种写法
+
+    val compareComm4 = new CompareComm4(p1, p2)
+    println(compareComm4.greatter)
+
+//    //方式2的使用方法
+//    val compareComm5 = new CompareComm5(p1, p2)
+//    println("compareComm5.greatter" + compareComm5.greatter)
+//
+//
+//    //方式3的使用
+//    val compareComm6 = new CompareComm6(p1,p2) //p1 =>Person
+//    println("compareComm6.greatter=" + compareComm6.greatter)
+  }
+}
+
+//一个普通的Person类
+class Person(val name: String, val age: Int) {
+  override def toString = this.name + "\t" + this.age
+}
+
+//方式1
+//说明
+//1. T: Ordering 表示 实现了 Ordering -> 实现 comparetor 接口
+//2. implicit comparetor: Ordering[T] 隐式参数
+class CompareComm4[T: Ordering](obj1: T, obj2: T)(implicit comparetor: Ordering[T]) {
+  //编写了一个greatter 返回 较大的对象
+  def greatter =
+    if (comparetor.compare(obj1, obj2) > 0) obj1 else obj2
+}
+
+//方式2,将隐式参数放到方法内
+class CompareComm5[T: Ordering](o1: T, o2: T) {
+  def greatter = {
+    //f1 是一个方法.
+    def f1(implicit cmptor: Ordering[T]) = cmptor.compare(o1, o2)
+
+    //使用f1
+    if (f1 > 0) o1 else o2
+  }
+}
+
+
+//方式3,使用implicitly语法糖，最简单(推荐使用)
+class CompareComm6[T: Ordering](o1: T, o2: T) {
+  def greatter = {
+
+    //这句话就是会发生隐式转换，获取到隐式值 personComparetor
+    //implicitly[Ordering[T]] 作用是进行上下文的匹配，如果有
+    //Ordering[T] 类型 就会匹配到， 并赋给 comparetor
+    val comparetor = implicitly[Ordering[T]] //Ordering[Person]
+
+    if (comparetor.compare(o1, o2) > 0) o1 else o2
+  }
+}
+```
 
 
 
+##### 协变，逆变，不变
 
-10:36 TODO
+###### 基本介绍
 
-16:17:TODO
+> scala的协变(+),逆变(-),不变invariant
+>
+> 协变：如果A和子类型B，满足List[B]也是List[A]的子类型，就称为协变+
+>
+> 逆变：如果A和子类型B，满足List[A]是List[B]的子类型，就成为逆变，和原关系相反
+>
+> Java中，泛型类型都是不变invariant,比如List<String>不是List<Object>的子类型
+
+```
+package day08
+
+object Convariant {
+  def main(args: Array[String]): Unit = {
+    //不变
+    val t1: Temp3[Sub] = new Temp3[Sub]("hello")
+    //    val t2:Temp3[Sub] = new Temp3[Super]("hello")
+    //协变 super是sub的父类，Temp[super]是Temp[Sub]的父类
+    val t4: Temp4[Super] = new Temp4[Sub]("hello")
+
+    //逆变--super是sub的父类 temp[super]是super[sub]的子类
+    val t5: Temp5[Sub] = new Temp5[Super]("hello")
+
+  }
+}
+
+//逆变
+class Temp5[-A](title: String) {
+  override def toString: String = {
+    title
+  }
+}
+
+//协变
+class Temp4[+A](title: String) {
+  override def toString: String = {
+    title
+  }
+}
+
+
+//不变
+class Temp3[A](title: String) {
+  override def toString: String = {
+    title
+  }
+}
+
+
+class Super //父类
+//sub是super的子类
+class Sub extends Super
+```
+
