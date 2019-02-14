@@ -16,7 +16,7 @@
 - printf 用法(类似c语言)字符串通过%传值(格式化输出)
 - 字符串通过$引用(类似php)
 
-## 变量
+#### 变量
 
 ##### 变量的介绍
 
@@ -159,7 +159,140 @@ StdIn.readLine() /readInt() ...
 
 ### 流程控制
 
+- 分类
 
+```
+顺序控制 :从上而下逐行执行
+分支控制(单分支，双分支，多分支):if()/if() else/ if() else if else
+	无switch分支结构
+循环控制:
+```
+
+###### for循环控制
+
+1. for(i <- 1to 3) {} //to表示[ ] 
+2. for(i<- 1 until 3){} //until 表示[ ) 前闭后开
+3. 循环守卫 for(i<- 1 to 3 if i!=2){} : if保护式为true时进入循环内部
+
+
+
+###### 循环返回值
+
+> yield：将遍历过程中的结果存储在新的Vector集合中，当做返回值返回
+
+```scala
+val res = for(i <- 1 to 10) yield i * 2
+println(res) //Vector(2, 4, 6, 8, 10, 12, 14, 16, 18, 20)
+```
+
+> yield 后面还可以写代码块
+
+```
+ def test02(): Unit ={
+    //将1到10数中的奇数放入到新的集合
+    val res2 = for (i <- 1 to 10) yield  {
+      if (i % 2 == 1) {
+        i
+      }else {
+        ()
+      }
+    }
+    println("res2=" + res2)
+  }
+```
+
+
+
+###### 使用花括号{}代替小括号()
+
+```
+    for {i<- 1 to 3
+         j=i*2}{
+      println("i="+i+"j="+j)
+    } //for后面的()变为了{}
+```
+
+###### 循环控制步长
+
+###### 方式一：Range
+
+从start =1便利到end-1 =9  step 为3
+
+```
+    for (i<- Range(1,10,3)){
+      println(i) //1 4 7
+    }
+```
+
+###### 方式二：守卫
+
+```
+ for (i <- 1 to 10 if i % 3 == 1 ) {
+      println("i=" + i)
+    }
+```
+
+
+
+##### While循环
+
+```
+循环变量初始化
+while(循环条件){
+    循环体
+    循环变量迭代
+}
+```
+
+- while语句的结果是Unit类型
+- 不推荐使用，推荐使用for(从设计思想上来讲，希望使用纯函数,while变量声明在外部，不推荐使用)
+
+###### do..while
+
+```
+ //统计1——200之间能被5整除但不能被3整除的个数
+    var n=1
+    var max=200
+    var count =0
+    do {
+      if (n%5==0 && n%3!=0){
+        count+=1
+      }
+      n+=1 //while循环变化条件
+    }while(n<=max)
+    println(count)
+```
+
+
+
+##### while循环中断
+
+> breakable和continue
+
+```scala
+import util.control.Breaks._
+ breakable({
+      for (i <- 0 until(array.length)){
+        if(array(i)==7) break()
+      }
+    })
+```
+
+- 使用循环守卫方式控制
+
+```
+  //100以内的数求和，求出当和 第一次大于20的当前数是多少
+    val  max =100
+    var sum =0
+    var flag=true
+    for (i<- 1 to max if flag==true){
+      sum+=i
+      if (sum>20){
+        println("当前i="+i)
+        flag=false
+      }
+    }
+```
 
 
 
@@ -172,6 +305,14 @@ StdIn.readLine() /readInt() ...
 
 ##### 函数/方法的定义
 
+###### 介绍
+
+- scala中，方法和函数几乎可以等同
+
+- 函数式编程从编程范式来讲： 函数是一等公民，可以像变量一样，作为函数的参数，也可以将函数赋值给变量,函数的创建不用依赖于类或对象
+- scala中函数式编程和面向对象融合在一起了
+- 函数四编程的主要思想是把运算过程尽量携程一系列嵌套的函数调用
+
 ###### 基本语法
 
 ```
@@ -179,6 +320,112 @@ def 函数名([参数名:参数类型]...)[[:返回值类型]=]{
 	语句...
 	返回值  //如果没有return ,默认以执行到最后一行的结果作为返回值
 }
+//说明
+返回值类型：
+	1.形式1： :返回值类型= :表示有返回值，且指定了返回值类型
+	2.形式2：= ：表示有返回值类型，但使用自动类型推导
+	3.形式3： 空 : 无返回值类型，为Unit
+```
+
+###### 函数递归需要遵守的原则
+
+1. 程序执行一个函数时，就创建一个新的栈帧(函数栈)
+
+2. 递归必须有结束条件，且向递归条件逼近
+
+   
+
+函数/方法
+
+TODO
+
+
+
+##### 惰性求值
+
+> 惰性计算(尽可能延迟表达式求值), 在真正需要的时候进行计算表达式的值
+
+
+
+```scala
+object LazyDemo {
+  def main(args: Array[String]): Unit = {
+    lazy val res = sum(1, 2)
+    println("--------------")
+    println("res="+res) //在真正使用的时候才进行求res的值
+  }
+
+  def sum(n1: Int, n2: Int) = {
+    println("sum 被调用")
+    n1 + n2
+  }
+}
+```
+
+###### 惰性函数
+
+> 函数的返回值声明为lazy时，函数的执行被推迟, 知道对此进行首次取值，该函数才会执行(惰性函数)
+
+##### 异常
+
+> try和catch块处理异常
+
+- code
+
+```scala
+object ScalaException {
+  def main(args: Array[String]): Unit = {
+    try{
+      var res = 10/0
+    }catch {
+      case  e:ArithmeticException=> {
+        println("算术异常="+e.getMessage)
+      }
+      case e:Exception => println("异常信息="+e.getMessage)
+    }finally {
+      println("finally...")
+    }
+  }
+}
+```
+
+###### scala异常总结
+
+- 将可能发生异常的代码放在try块中，使用catch捕获异常，finally中是一定会执行的代码
+- scala的异常工作机制和java一样，但是Scala没有编译时异常,所有异常都是在运行期进行捕获的
+- 可以用throw关键字抛出异常，throw表达式的类型是nothing, 因为nothing是任何类型的子类，所以可以用在任何需要类型的地方
+
+###### Throw
+
+```scala
+object ThrowTest {
+  def main(args: Array[String]): Unit = {
+    try {
+      val res = test()
+      println(res.toString+"1")
+    }catch {
+      case e:Exception=>{
+        println(e.getMessage)
+      }
+    }
+  }
+  def test(): Nothing = {
+    throw new Exception("不对")
+  }
+}
+```
+
+- 可以用注解的方式声明异常
+
+```
+def main(args: Array[String]): Unit = {
+    fun()
+  } 
+  //利用注解的方式声明可能会抛出一个异常
+ @throws(classOf[NumberFormatException])//等同于NumberFormatException.class
+  def fun()  = {
+    "abc".toInt
+  }
 ```
 
 ###### 过程
@@ -187,9 +434,112 @@ def 函数名([参数名:参数类型]...)[[:返回值类型]=]{
 
 
 
+### 面向对象
+
+> scala是纯粹的面向对象的语言，在scala中，一切皆对象
+
+##### 定义类
+
+```
+[修饰符] 类名{
+    类体
+}
+```
+
+###### 类的注意事项
+
+- 类不声明为public(默认为public )
+- 一个文件中可以定义多个类，每个类都是public属性的
+
+###### 属性的注意事项
+
+- 属性的定义语法同变量 ex:  [修饰符] var 属性名称[: 数据类型] = 数据值
+- 属性必须显式初始化，数据类型可以省略，可以根据初始值自动类型推导
+- 如果属性赋值为null,一定要写类型，否则为Null类型
+
+###### 如何创建对象
+
+> var| val  对象名[:类型] = new 对象类型()
+
+- val表示对象不可变,scala设计者推荐使用val，因为通常只改变对象的属性，不改变对象引用
+
+###### 构造器
+
+> scala构造器也支持重载，可以有多个构造器
+>
+> scala中有一个主构造器，多个辅助构造器
+
+- 基本语法
+
+```scala
+class 类名(形参列表 value:type) { //主构造器
+    def this(形参列表){} //辅构造器
+    def this(形参列表){} //辅构造器
+} //辅助构造器的名称为this,
+```
+
+辅助构造器==一定要调用主构造器==,无论是直接还是间接，都会调用主构造器,所以一定要将调用写在第一行
+
+1. 主构造器会执行类中(主构造器)所有的语句--也可以体现scala将函数式编程和面向对象融合在一起的思想，即构造器也是方法(函数)
+2. 如果主构造器无参数，小括号可以省略
+
+```scala
+object ConstructorTest {
+  def main(args: Array[String]): Unit = {
+    val person = new Person //如果没有通过主构造器的方式构造，就会调用恰当的辅助构造器
+    person.show()
+  }
+
+}
+class Person(pName: String, pAge:Int){
+  var name = pName
+  var age= pAge
+
+  def this(){
+    this("pangdi",23)
+  }
+
+  def show(): Unit ={
+    println("name:="+this.name + " age="+this.age)
+  }
+}
+```
+
+3. 可以在构造器前加private，使构造器私有化
+
+```
+class Person private (pName: String, pAge:Int){
+  var name = pName
+  var age= pAge
+
+   private def this(){
+    this("pangdi",23)
+  }
+```
 
 
-## 数据结构上
+
+##### 属性高级
+
+###### 构造器参数
+
+1. 主构造器中形参未用var /val进行修饰，那么就是局部变量
+2. val修饰形参，为只读变量
+3. var修饰形参，为私有的成员变量，并提供get/set方法
+4. 注解生成标准javabean: @BeanPropetry
+
+###### 对象创建流程
+
+1. 加载类的属性信息和方法信息
+2. 在内存中-堆为对象开辟内存
+3. 使用父类主构造器为父类初始化
+4. 使用本类的主构造器初始化
+5. 使用本类的辅助构造器继续初始化
+6. 将对象在内存中的地址复制给p
+
+
+
+### 数据结构上
 
 ##### 数据结构特点
 
@@ -1515,5 +1865,1508 @@ class Temp3[A](title: String) {
 class Super //父类
 //sub是super的子类
 class Sub extends Super
+```
+
+
+
+
+
+## Scala数据结构
+
+##### 稀疏矩阵
+
+
+
+##### 队列
+
+> 队列特点：先进先出
+
+###### 环形队列：
+
+条件:
+
+![1549933057217](assets/1549933057217.png)
+
+> 此方式将队列**空出一个空间**作为约定
+>
+> 队列满:   (rear+1)%maxSize == front
+>
+> 队列空: rear == front 
+
+
+
+> 非环形队列的坏处：无法使用已经出队的空间，造成只能使用一次，所以改进为环形队列
+
+
+
+- code
+
+> 注意点：
+>
+> 1. 两个成员变量：front和 rear
+> 2. size()方法：求取front到rear的两个变量的距离，要模除maxsize
+
+```scala
+package datastructure.circleQueue
+
+import scala.io.StdIn
+
+object CircleQueueTest {
+  def main(args: Array[String]): Unit = {
+    val q = new CircleArrayQueue(4)
+
+    //环形队列
+    var key =""
+    while(true){
+      println("show: 显示队列")
+      println("exit: 退出程序")
+      println("add:  添加数据")
+      println("get : 取出对首元素数据")
+      println("head: 查看队列中所有元素")
+
+      key = StdIn.readLine()
+      key match { // 模式匹配
+        case  "show" =>q.showQueue()
+        case "exit"=> System.exit(0) //以正常模式退出
+        case "add" => {
+          println("请输入一个数字")
+          val num = StdIn.readInt()
+          q.addQueue(num)
+        }
+        case "get" => {
+          val res = q.getQueue()
+          if (res.isInstanceOf[Exception]) {
+            println(res.asInstanceOf[Exception].getMessage)
+          } else {
+            println(s"取出数据是 $res")
+          }
+        }
+        case "head" => {
+          val res = q.headQueue()
+          if(res.isInstanceOf[Exception]) {
+            //显示错误信息
+            println(res.asInstanceOf[Exception].getMessage)
+          }else {
+            println("队列头元素值为=" + res)
+          }
+        }
+
+      }
+    }
+  }
+}
+
+class CircleArrayQueue(arrMaxSize: Int) {
+  //定义数组，存放容量
+  var maxSize = arrMaxSize
+  val array = new Array[Int](maxSize) //以maxSize作为大小
+  //两个变量--环形队列中两个指针front指针和rear指针，分别指向队列头元素和队列尾元素
+  var front = 0
+  var rear = 0
+
+  //定义环形队列方法
+  /**
+    * 判断队列是否已满 --队列满的条件是一个公式: (rear+1)%maxsize == front
+    * 因为是环形队列，所以使用模除的方法,并且将一个位空出，用作标记位
+    */
+  def isFull(): Boolean = {
+    (rear + 1) % maxSize == front
+  }
+
+  /**
+    * 判断是否为空--环形队列空的条件是两个指针指向同一个位置
+    *
+    * @return
+    */
+  def isEmpty(): Boolean = {
+    rear == front
+  }
+
+  //添加数据到环形队列中
+  /**
+    * 添加到尾部
+    * @param n
+    */
+  def addQueue(n: Int): Unit = {
+    if (isFull()) {
+      println("环形队列已满，无法添加...")
+      return
+    }
+    //将数据添加进入
+    array(rear) = n
+    rear = (rear + 1) % maxSize //因为是环形队列方式，所以需要模除
+  }
+
+  def getQueue(): Any = {
+    if (isEmpty()) {
+      println("环形队列已空,没有数据")
+      return new Exception("环形队列空...")
+    }
+    val tmp = array(front)
+    front = (front + 1) % maxSize
+    return tmp
+  }
+
+
+
+  /**
+    * 显示队列中所有元素
+    */
+  def showQueue(): Unit ={
+    //先考虑一般性的特殊情况
+    if (isEmpty()){
+      println("环形队列空，没有数据...")
+      return
+    }
+    //从front开始，循环
+    for (i <- front until  size()){
+      printf("下标 %d 值%d \n" , i, array(i))
+    }
+  }
+  def size(): Int = {
+    (rear+maxSize -front)%maxSize
+  }
+
+  def headQueue(): Any ={
+    if (isEmpty()){
+      return new Exception("环形队列空...")
+    }
+    return array(front)
+  }
+}
+```
+
+
+
+##### 链表
+
+链表是有序的列表,内存中的地址不是紧邻在一起的(在内存空间中不一定是连续分布的)
+
+- 有效利用碎片空间
+
+#### 单链表
+
+##### 带有头结点
+
+![1549971599363](assets/1549971599363.png)
+
+> 头结点中不带有数据,只是为了**方便操作**而设计的
+
+- code
+
+```scala
+
+object SingleLinkedTest {
+  def main(args: Array[String]): Unit = {
+    test1()
+  }
+  def test1(): Unit = {
+    val list = new SingleLinkedList()
+    val node1 = new ListNode(1, "胖迪1")
+    val node2 = new ListNode(2, "胖迪2")
+    val node3 = new ListNode(3, "胖迪3")
+    list.list()
+    list.addSorted(node1)
+    list.addSorted(node3)
+    list.addSorted(node2)
+    println("======================")
+    list.list()
+    println("=========update===========")
+    var node4 = new ListNode(3, "迪丽热巴")
+    list.update(node4) //将3号name改为迪丽热巴
+    list.list()
+    var node5 = new ListNode(5,"迪丽热巴")
+    list.update(node5) //测试no不存在情况
+
+    println("========delete1=========")
+    list.delete(3)
+    list.delete(1)
+    list.delete(2)
+    list.list()
+    println("=====delete2======")
+    list.delete(5) //删除一个不存在节点
+    list.list()
+
+  }
+}
+
+class SingleLinkedList{
+  //头结点
+  val head = new ListNode(0, "")
+
+  //add
+  /**
+    * 添加到尾部，没有进行排序
+    * @param node
+    */
+  def add(node:ListNode): Unit = {
+    //使用临时变量进行查找
+    var tmp = head
+    while(tmp.next != null){
+      tmp = tmp.next
+    }
+    //找到尾节点后
+    tmp.next = node
+  }
+
+  //addsorted
+  /**
+    * 重点：链表按照no排序插入
+    * @param node
+    */
+  def addSorted(node:ListNode): Unit ={
+    //处理第一次插入情况
+    if (head == null){
+      head.next = node
+      return
+    }
+
+    var tmp = head
+    //两种情况，一：按照no找到合适的插入位置 2：如果no有重复的返回false,表示已有重复的，错误
+    var existFlag = false
+    breakable {
+      while (true) {
+        //处理循环结束条件
+        if (tmp.next == null){ //最后一个节点位置
+          break()
+        }
+
+        //按照no从小到大的位置进行插入
+        if (tmp.next.no > node.no) {
+          break()
+        } else if (tmp.next.no == node.no) {
+          existFlag = true
+          break()
+        }
+
+        //while变化条件
+        tmp= tmp.next
+      }
+    }
+    //找到插入位置
+    if (existFlag){
+      println("节点已存在,无法插入...")
+    }else{
+      //先处理后面的逻辑链表逻辑
+      node.next = tmp.next
+      //在处理前面的链表逻辑
+      tmp.next = node
+    }
+  }
+  //del //删除节点，根据no进行删除
+  def delete(no:Int): Unit ={
+    if (head.next == null){
+      println("链表为空,无数据...")
+      return
+    }
+    //因为单链表的删除需要找到节点的前一个节点，然后进行改变链表指向关系，所以是head
+    var tmp = head //head,不是head.next
+    var findFlag= false
+    while(tmp!=null && tmp.next != null){
+      //找到no相同的
+      if (tmp.next.no == no){
+        findFlag= true
+        tmp.next = tmp.next.next
+      }
+      tmp = tmp.next
+    }
+    if (!findFlag){
+      println("id="+ no+"的节点不存在...")
+    }
+
+  }
+  //update--更新
+  /**
+    * 更新操作
+    * @param node
+    */
+  def update(node:ListNode): Unit = {
+    if (head.next == null){
+      println("链表为空...")
+      return
+    }
+    var tmp = head.next
+    var existFlag = false
+    while(tmp!= null){
+      //no相同，进行替换
+      if(tmp.no == node.no){
+        existFlag= true
+        tmp.name = node.name
+      }
+      //while变化条件
+      tmp = tmp.next
+    }
+    if (!existFlag){
+      println("节点不存在，不能进行替换...")
+    }
+  }
+  //查看list
+  /**
+    * 显示所有节点信息
+    */
+  def list(): Unit ={
+    if (head.next ==null){
+      println("空链表...")
+      return
+    }
+    var tmp = head.next
+    while(tmp!= null){
+      println(tmp) //打印tmp的信息
+      //while循环变化条件
+      tmp=tmp.next
+    }
+  }
+
+
+}
+
+class ListNode(hereNo: Int, heroName: String) {
+  var no = hereNo
+  var name = heroName
+
+  var next: ListNode = null //next默认为null
+  override def toString: String = no + "\t" + name  //重写toString方法
+}
+```
+
+
+
+##### 双向链表的应用案例
+
+> 使用带有head头结点的双向链表实现
+
+- 单链表的缺点
+  - 单向链表：查找的方向只能是一个方向，只能从前到后，双向链表都可以
+  - 单链表不能自我删除，需要辅助节点，双链表可实现自我删除
+
+- code
+
+```
+package datastructure.DoubleLinkedList
+
+import  scala.util.control.Breaks._
+object DoubleLinkedListTest {
+  def main(args: Array[String]): Unit = {
+
+  }
+}
+
+class DoubleLinkedList{
+  //先初始化一个头结点
+  val head= new DoubleListNode(0,"")
+  def add(heroNode: DoubleListNode): Unit = {
+    //因为头结点不能动, 因此我们需要哟有一个临时结点，作为辅助
+    var temp = head
+    //找到链表的最后
+    breakable {
+      while (true) {
+        if (temp.next == null) { //说明temp已经是链表最后
+          break()
+        }
+        //如果没有到最后
+        temp = temp.next
+      }
+    }
+    //当退出while循环后，temp就是链表的最后
+    temp.next = heroNode
+    heroNode.prev = temp
+
+  }
+
+  //遍历方法一样, 可以直接使用单链表的，
+  def list(): Unit = {
+
+    //判断当前链表是否为空
+    if (head.next == null) {
+      println("链表为空!!")
+      return
+    }
+    //因为头结点不能动, 因此我们需要哟有一个临时结点，作为辅助
+    //因为head 结点数据，我们不关心，因此这里 temp=head.next
+    var temp = head.next
+    breakable {
+      while (true) {
+        //判断是否到最后
+        if (temp == null) {
+          break()
+        }
+        printf("结点信息 no=%d name=%s \n",
+          temp.no, temp.name)
+        temp = temp.next
+      }
+    }
+  }
+
+  //更新无更改--可以使用单链表的
+  def update(newHeroNode: DoubleListNode): Unit = {
+    if (head.next == null) {
+      println("链表为空")
+      return
+    }
+    //先找到节点
+    var temp = head.next
+    var flag = false
+    breakable {
+      while (true) {
+        if (temp == null) {
+          break()
+        }
+        if (temp.no == newHeroNode.no) {
+          //找到.
+          flag = true
+          break()
+        }
+        temp = temp.next //
+      }
+    }
+    //判断是否找到
+    if (flag) {
+      temp.name = newHeroNode.name
+    } else {
+      printf("没有找到 编号为%d 节点，不能修改\n", newHeroNode.no)
+    }
+
+  }
+
+  //删除
+  //思路，因为双向链表可以实现自我删除
+  //双向链表可以实现自我删除，所以需要重新实现
+  def del(no: Int): Unit = {
+
+    //判断当前链表是否为空
+    if (head.next == null) {
+      println("链表空")
+      return
+    }
+
+    var temp = head.next
+    var flag = false // 标志变量用于确定是否有要删除的节点
+    breakable {
+      while (true) {
+        if (temp == null) {
+          break()
+        }
+        if (temp.no == no) {
+          //找到了
+          flag = true
+          break()
+        }
+        temp = temp.next //temp后移
+      }
+    }
+
+    if (flag) {
+      //可以删除
+      //temp.next = temp.next.next
+      temp.prev.next = temp.next
+      //思考
+      if (temp.next != null) {
+        temp.next.prev = temp.prev
+      }
+    } else {
+      printf("要删除的no=%d 不存在\n" , no)
+    }
+  }
+
+}
+
+
+//双向链表节点
+class DoubleListNode(hereNo:Int, heroName:String){
+  var no :Int = hereNo
+  var name = heroName
+  var prev :DoubleListNode = null; //默认置为空
+  var next:DoubleListNode = null; //默认置为空
+}
+```
+
+
+
+#### 栈(stack)
+
+##### 介绍
+
+- 栈是一个**先入后出**的有序列表
+- 栈是一个插入和删除只能在线性表的同一端进行插入和删除的特殊线性表，允许插入和删除的一端成为栈顶(Top) ,另一端为固定的一端，成为栈底(Bottom)
+
+
+
+##### 用数组模拟实现栈
+
+```
+
+import scala.io.StdIn
+
+object ArrayStackTest {
+  def main(args: Array[String]): Unit = {
+    test()
+  }
+
+  def test(): Unit ={
+
+    //创建给栈
+    val arrayStack = new ArrayStack(4)
+
+    //测试栈的基本使用是否正确
+    var key = ""
+    while (true) {
+      println("show: 表示显示栈")
+      println("exit: 表示退出程序")
+      println("push: 表示添加数据到栈")
+      println("pop: 表示从栈取出数据")
+
+      key = StdIn.readLine()
+      key match {
+        case "show" => arrayStack.list()
+        case "push" => {
+          println("请输入一个数")
+          val value = StdIn.readInt()
+          arrayStack.push(value)
+        }
+        case "pop" => {
+          val res = arrayStack.pop()
+          if (res.isInstanceOf[Exception]) {
+            println(res.asInstanceOf[Exception].getMessage)
+          }else {
+            printf("取出的数为 %d\n", res)
+          }
+        }
+        case "exit" => {
+          System.exit(0)
+        }
+      }
+    }
+
+  }
+
+}
+
+
+class ArrayStack(size: Int) {
+  val maxSize = size //栈的大小
+  var stackArr = new Array[Int](maxSize)
+
+  //栈顶，初始化为-1
+  var top = -1
+
+  //判断栈满
+  def isFull(): Boolean = {
+    top == maxSize - 1
+  }
+
+  //判断栈空
+  def isEmpty(): Boolean = {
+    top == -1
+  }
+
+  //入栈
+  def push(num: Int): Unit = {
+    if (isFull()) {
+      //如果已经满了
+      println("栈满...")
+      return
+    }
+    top += 1 //初始时指向-1,所以先+=1
+    stackArr(top) = num
+
+  }
+
+  //出栈
+  def pop(): Any = {
+    if (isEmpty()) {
+      return new Exception("栈空")
+    }
+    val value = stackArr(top) //临时存放
+    top -= 1 //然后将top--
+    return value //最后返回value
+  }
+
+  //遍历栈
+  def list(): Unit = {
+    if (isEmpty()) {
+      println("栈空,没有数据..")
+      return
+    }
+    for (i <- 0 to top reverse) { //反转，从栈顶到栈底
+      printf("stack[%d]=%d\n", i, stackArr(i))
+    }
+  }
+
+}
+```
+
+##### 栈实现综合计算器
+
+使用栈来实现综合计算器-自定义优先级[priority]
+
+![1550113182119](assets/1550113182119.png)
+
+- code
+
+```
+package datastructure.Calculator
+
+import util.control.Breaks._
+
+/**
+  * 用栈计算表达式[7*2*2-5+1-5+3-3]
+  *
+  * 使用两个栈的方式，一个数字栈，一个符号栈
+  */
+object CalculatorTest {
+  def main(args: Array[String]): Unit = {
+    val expression = "7*2*2-5+1-5+3-4"
+    var numStack= new ArrayStack(10)
+    var operStack= new ArrayStack(10)
+
+
+    var index =0
+    var num1 =0
+    var num2 =0
+    var oper =0
+    var res =0
+    var ch =' '
+    var keepNum =""
+
+    //设计两个栈，树栈和符号栈
+    //一个一个的去除char
+    //判断当前去除的字符是符号时，直接入栈，
+    //会循环的取出expression 字符
+    breakable {
+      while (true) {
+
+        //扫描expression
+        ch = expression.substring(index, index + 1)(0)
+
+        if (operStack.isOper(ch)) { //如果是操作符..
+
+          if (!operStack.isEmpty()) {
+            //如果当前符号的优先级 小于等于符号栈的栈顶的符号的优先级，则取出该符号，并从数栈依次 //pop 出两个数据，进行运算，将结果重新puhs到 数栈，再将当前符号push 到符号栈
+            if (operStack.priority(ch) <= operStack.priority(operStack.array(operStack.top))) {
+              //开始计算
+              num1 = numStack.pop().toString.toInt
+              num2 = numStack.pop().toString.toInt
+              oper = operStack.pop().toString.toInt
+              res = numStack.cal(num1, num2, oper)
+              //入数字栈
+              numStack.push(res)
+              //把当前ch入符号栈
+              operStack.push(ch)
+            } else {
+              //如果当前的符号的优先级大于符号栈顶的符号优先级，直接入栈
+              operStack.push(ch)
+            }
+          } else {
+            //符号就直接入栈
+            operStack.push(ch) // '+' => 43
+          }
+
+        } else { // 是数
+          //处理多位数的逻辑
+          keepNum += ch
+
+          //如果ch 已经是expression 最后一个字符
+          if (index == expression.length - 1) {
+            numStack.push(keepNum.toInt)
+          }else {
+
+            //判断ch 的下一个字符是不是数字, 如果是数字，则进行一次扫描，如果是操作符，就直接入栈
+            //看到expresson的下一个字符时，不要真正的移动index ,只是探测一下
+            if (operStack.isOper(expression.substring(index + 1, index + 2)(0))) {
+              //是操作符入栈
+              numStack.push(keepNum.toInt)
+              keepNum = "" // 清空
+            }
+          }
+
+          //numStack.push((ch + "").toInt) // ? '1' => 49 '3' "1"=> 1
+        }
+
+        //index 后移
+        index += 1
+        //判断是否到表达式的最后
+        if (index >= expression.length()) {
+          break()
+        }
+
+      }
+    }
+
+    //当整个表达式扫描完毕后，依次从数栈和符号栈取出数据，进行运行，最后在数栈中的数据就是结果
+    breakable {
+      while (true) {
+        if (operStack.isEmpty()) {
+          break()
+        }
+        //运算
+        //开始计算
+        num1 = numStack.pop().toString.toInt
+        num2 = numStack.pop().toString.toInt
+        oper = operStack.pop().toString.toInt
+        res = numStack.cal(num2, num1, oper)
+        numStack.push(res) //入栈
+      }
+    }
+
+    //将数字栈的最后结果pop
+    val res2 = numStack.pop()
+    printf("表达式 %s = %d", expression, res2)
+  }
+}
+
+
+//还要设计一个栈,用于专门的计算 --有一个专门用于计算的方法
+//底层使用array实现栈，有一个记录栈顶的指针
+
+class ArrayStack(maxSize:Int){
+  val size = maxSize
+  var array = new Array[Int](size) //初始化
+  var top = -1  //指向栈顶的指针，初始化为-1
+
+  //判断栈满
+  def isFull(): Boolean={
+    top == size-1
+  }
+  //判断栈空
+  def isEmpty():Boolean={
+    top == -1
+  }
+  //push
+  def push(num:Int): Unit ={
+    if (isFull()){
+      println("栈已满，无法添加...")
+      return
+    }
+    //正常情况，添加数据
+    top+=1 //先将top改变，top默认指向-1
+    array(top) = num
+  }
+  //pop
+  def pop():Int={
+    if (isEmpty()){
+      println("栈空...")
+      return -1
+    }
+    var value= array(top)
+    top-=1  //top栈顶指针向下移动一个单位
+    value //返回value
+  }
+  //遍历list
+  /**
+    * 遍历
+    */
+  def list(): Unit ={
+
+    for (i <- 0 to top reverse){
+      println("栈id="+i+"元素="+array(i))
+    }
+  }
+  //计算 num1 num2 oper--获取计算结果
+  def cal(num1:Int, num2:Int, oper:Int): Int ={
+    oper match {
+      case '+' =>{
+          num1+num2
+      }
+      case '-' =>{
+        num1-num2
+      }
+      case '*'=>{
+        num1*num2
+      }
+      case '/' =>{
+        num1/num2
+      }
+      case _=>{
+        0
+      }
+    }
+  }
+
+
+  //返回运算符的优先级, 是程序员定, 数字越大，优先级越高
+  // + 1 => 0 *[] /[] => 1
+  def priority(oper: Int): Int = {
+    if (oper == '*' || oper == '/') {
+      return 1
+    } else if (oper == '+' || oper == '-') {
+      return 0
+    } else {
+      -1 //不正确
+    }
+  }
+
+  def isOper(value: Int): Boolean = {
+    value == '+' || value == '-' || value == '/' || value == '*'
+  }
+}
+```
+
+
+
+###### 扩展--带有()优先级
+
+> 双栈方式，符号栈中优先级：() >  乘除(*/ )  >  加减(+-)  ,括号优先执行，遇到右括号就弹出, 没有遇到右括号就像对应栈中压入元素 
+
+
+
+
+
+
+
+
+
+
+
+##### 递归问题
+
+- 递归实现迷宫问题
+
+![1550113083472](assets/1550113083472.png)
+
+```
+package datastructure.Recursive
+
+/**
+  * 迷宫问题
+  */
+object RecursiveTest {
+  def main(args: Array[String]): Unit = {
+    test01()
+  }
+
+  def test01(): Unit = {
+    //创建二维数组模仿迷宫--上下左右四周为数字1，表示迷宫
+    val array = Array.ofDim[Int](8, 7)
+    //上下 全部置为1
+    for (i <- 0 to 6){
+      array(0)(i) = 1
+      array(7)(i) =1
+    }
+    //左右全部置为1
+    for (i<- 0 to 7){
+      array(i)(0)=1
+      array(i)(6) =1
+    }
+
+    //设置两个格挡
+    array(3)(1) = 1
+    array(3)(2) = 1
+
+    //打印地图
+    for (i <- 0 until 8) {
+      for (j <- 0 until 7) {
+        print(array(i)(j) + " ")
+      }
+      println()
+    }
+    println("================")
+    // 参数：数组，起始坐标
+    setWay(array, 1,1)
+
+    //查找结束后，再次进行打印地图
+    for (i <- 0 until 8) {
+      for (j <- 0 until 7) {
+        print(array(i)(j) + " ")
+      }
+      println()
+    }
+  }
+
+  /**
+    * 定义一个策略：
+    * 数字0表示可以走，还没走
+    * 数字1表示墙
+    * 数字2表示可以走
+    * 数字3表示已经走过，死路
+    * 确定一个行走策略： 下=>右=>上=》左
+    * 其实位置从(1,1)开始
+    */
+  def setWay(array: Array[Array[Int]], i:Int,j:Int): Boolean = {
+    //设置递归结束条件
+    if (array(6)(5) ==2){
+      return true
+    }
+    if (array(i)(j) ==0){
+      array(i)(j)=2 //立刻置为2，表示可以走的路
+      //进行递归策略
+      //下
+      if (setWay(array,i+1,j)){
+        return true
+      }else if (setWay(array,i,j+1)){
+        //右
+        return true
+      }else if (setWay(array,i-1,j)){
+        //上
+        return true
+      }else if (setWay(array,i,j-1)){
+        //左
+        return true
+      }else{ //上下左右不都行，
+        return false;
+      }
+    }else{ //非0 1,2,3
+      return false
+    }
+  }
+}
+```
+
+
+
+##### 查找
+
+###### 二分查找
+
+> 二分查找的前提是：查找的数组有序，
+
+```
+
+object BinarySearchTest {
+  def main(args: Array[String]): Unit = {
+    //二分查找数组前提，数组有序
+    var arr = Array(1, 2,3,4,5,6,7,8,9)
+    println(binarySearch(arr, 5, 0, arr.length - 1))
+  }
+  def binarySearch(array: Array[Int], find:Int, left:Int, right:Int):Int ={
+    if (left>right){
+      return -1
+    }
+    var mid = (left+right)/2
+    //递归方式进行二分法查找
+    if (array(mid) >find){ //中间值大于想要查找的值
+      binarySearch(array,find, left,mid-1)
+    }else if (array(mid) < find){
+      binarySearch(array,find, mid+1,right)
+    }else{
+      println("找到...下标 "+mid +"值：" +array(mid))
+      return mid
+    }
+
+  }
+}
+```
+
+
+
+#### Scala排序
+
+参考资料：https://www.cnblogs.com/onepixel/articles/7674659.html
+
+![img](assets/849589-20180402133438219-1946132192.png)
+
+
+
+##### 冒泡排序
+
+> 排序思想： 
+>
+> 依次比较相邻的元素，将大(从小到大)的元素放在最后面，类似于冒泡一样
+
+```
+
+/**
+  * 冒泡排序
+  */
+object BubbleSort {
+  def main(args: Array[String]): Unit = {
+    var arr = Array(1,3,5,7,9,2,4,6,8)
+    bubbleSort(arr)
+    println(arr.mkString(" "))
+  }
+  def bubbleSort(array: Array[Int]): Unit ={
+    for (i<- 0 until array.length-1){
+      for(j<- 0 until array.length-i-1){ //最大的已经排在最后面了，所以内层循环到arr.legth-i-1
+        if (array(j) >array(j+1)){//交换
+          val tmp = array(j)
+          array(j) = array(j+1)
+          array(j+1) = tmp
+        }
+      }
+    }
+  }
+}
+
+```
+
+
+
+##### 选择排序
+
+> 排序思想：
+>
+> 第一次从Arr[0] 到Arr[n-1]中选出最小的，和Arr[0]进行交换
+>
+> 第二次从Arr[1] 到Arr[n-1]中选出最小的，和Arr[1]进行交换
+>
+> ...
+
+```scala
+
+object SelectionSort {
+  def main(args: Array[String]): Unit = {
+
+    var arr = Array(1,3,5,2,4)
+    selectionSort(arr)
+
+    println(arr.mkString(" "))
+  }
+
+  def selectionSort(array: Array[Int]): Unit = {
+    for (i <- 0 until array.length - 1) {
+      var minValue = array(i)
+      var minIndex = i
+      //内层循环
+      for (j <- (i + 1) until array.length) {
+        if (minValue > array(j)) {
+          minValue = array(j)
+          minIndex = j
+        }
+      }
+      //判断索引是否相同
+      if (minIndex != i) {
+        array(minIndex) = array(i)
+        array(i) = minValue
+      }
+    }
+  }
+
+}
+```
+
+
+
+##### 插入排序
+
+> ###### 从后向前比较
+
+> 排序思想：
+>
+> 将n个元素分成两部分，一部分是有序序列， 一部分是无序序列，第一次时，第一个为有序序列，其余都是无序序列，每次从无序序列中取出一个元素，然后和有序序列进行比较，找到合适的位置进行插入(从后向前进行比较)
+
+
+
+```
+package datastructure.sort
+
+object InsertSortTest {
+  def main(args: Array[String]): Unit = {
+    var array = Array(1,3,5,7,9,2,4,6,8)
+    insertSort(array)
+
+    println(array.mkString(" "))
+  }
+
+  /**
+    * var insertIndex = i-1 //插入位置为前一个，从后向前查找插入  记得-1
+    * @param array
+    */
+  //插入排序
+  def insertSort(array: Array[Int]): Unit ={
+    //从后向前
+    for (i <- 1 until array.length){
+      var insertIndex = i-1 //插入位置为前一个，从后向前查找插入
+      var insertValue = array(i)
+      while(insertIndex>=0  && insertValue < array(insertIndex)){
+        array(insertIndex+1) = array(insertIndex) //后面的数据覆盖前面的数据
+        insertIndex-=1 //向前移动
+      }
+      array(insertIndex+1) = insertValue
+    }
+  }
+
+}
+```
+
+
+
+##### 快速排序
+
+> 快速排序思想：
+>
+> 找到一个数，通过一趟排序，左边的比这个数小，右边的都比这个数大，然后类推，通过递归思想进行全部排序
+
+
+
+```scala
+
+object QuickSortTest {
+  def main(args: Array[String]): Unit = {
+    var arr = Array(1, 3, 5, 7, 9, 2, 4, 6, 8)
+    quickSort(arr, 0, arr.length - 1)
+    println(arr.mkString(" "))
+  }
+
+  def quickSort(array: Array[Int], left: Int, right: Int): Unit = {
+    if (left >= right)
+      return
+    val key = SinglePartSort(array, left, right)
+    quickSort(array, left, key - 1)
+    quickSort(array, key + 1, right)
+  }
+  //挖坑法，把第一个数字当成一个坑
+  def SinglePartSort(a: Array[Int], l: Int, r: Int): Int = {
+    var left = l
+    var right = r //不能指向常量
+    var key = a(right)
+
+    while (left < right) {
+      while (left < right && a(left) <= key) {
+        left += 1
+      }
+      a(right) = a(left) //交换
+      while (left < right && a(right) >= key) {
+        right -= 1
+      }
+      a(left) = a(right)
+    }
+    a(left) = key //最后left一定等于right,所以理论上，这里写left还是right都是一样的
+    return left
+  }
+}
+```
+
+##### 归并排序
+
+> 归并排序思想：
+>
+> 采用分治的思想，将一个大的问题拆分成一个个的小问题解决，将n个元素递归拆分成单个元素，然后进行逐个的合并排序
+
+![1550055587740](assets/1550055587740.png)
+
+![1550055597237](assets/1550055597237.png)
+
+- code
+
+```scala
+
+object MergeSort {
+  def main(args: Array[String]): Unit = {
+//    var arr = Array(5, 7, 4)
+    var arr = Array(1,3,5,7,2,4,6,8)
+    mergeSort(arr,0, arr.length-1)
+    println(arr.mkString(" "))
+  }
+  def mergeSort(array: Array[Int], left:Int, right:Int): Unit ={
+    var tmp = new Array[Int](array.length)
+    mergeSort(array, left, right, tmp)
+  }
+
+  def merge(array: Array[Int], left: Int, mid: Int, right: Int, tmp: Array[Int]): Unit = {
+    //三个索引指针，第一个指向left 起始位置，第二个指向mid+1 的起始位置，第三个指向tmp的起始位置
+    var l = left
+    var m = mid+1
+    var t = 0
+
+     //先进行比较两个部分的较小值，然后放入到tmp中，使变得有序
+    while(l<= mid && m <= right){
+      if (array(l)< array(m)){ //如果l的数据小
+        tmp(t)=array(l)
+        t+=1 //将较小的数据放入后，t指针向后移动一个单位
+        l+=1 //l向后移动一个单位
+      }else {
+        tmp(t) =array(m)
+        m+=1 //m指针向后移动一个单位
+        t+=1  //t指针向后移动一个单位
+      }
+    }
+    //然后判断这两个部分数据，是否还有剩余--有剩余将之放入到tmp中
+    while(l<=mid){
+      tmp(t) = array(l)
+      l+=1
+      t+=1
+    }
+    while(m<= right){
+      tmp(t) = array(m)
+      m+=1
+      t+=1
+    }
+    //最后将数据从tmp拷贝到array中
+    t=0
+    var tmpLeft = left
+    while(tmpLeft<=right){ //拷贝数据
+      array(tmpLeft) = tmp(t)
+      tmpLeft+=1
+      t+=1
+    }
+  }
+
+  def mergeSort(array: Array[Int], left:Int, right:Int, tmp:Array[Int]): Unit ={
+    var mid = (left+right)/2
+    if (left<right) {
+      mergeSort(array, left, mid, tmp)
+      mergeSort(array, mid + 1, right, tmp)
+      //merger合并操作
+      merge(array, left, mid, right, tmp)
+    }
+  }
+}
+
+```
+
+### 哈希表(hash table)
+
+- code
+
+```
+package datastructure.HashTab
+
+
+import scala.io.StdIn
+import util.control.Breaks._
+
+object HashTabDemo {
+  def main(args: Array[String]): Unit = {
+
+    //创建HashTab
+    val hashTab = new HashTab(2)
+    //写一个简单菜单
+    var key = " "
+    while (true) {
+      println("add:  添加雇员")
+      println("list: 显示雇员")
+      println("find: 查找雇员")
+      println("exit: 退出系统")
+
+      key = StdIn.readLine()
+      key match {
+        case "add" => {
+          println("输入id")
+          val id = StdIn.readInt()
+          println("输入名字")
+          val name = StdIn.readLine()
+          val emp = new Emp(id, name)
+          hashTab.add(emp)
+        }
+        case "find" => {
+          println("输入要查找的雇员的id")
+          val id = StdIn.readInt()
+          hashTab.findEmpById(id)
+        }
+        case "list" => {
+          hashTab.list()
+        }
+      }
+
+    }
+  }
+}
+
+//创建Emp类
+class Emp(eId: Int, eName: String) {
+  val id = eId
+  var name = eName
+  var next: Emp = null
+}
+
+//创建EmpLinkedList
+class EmpLinkedList {
+  //定义头指针, 这里head 我们直接回指向一个雇员
+  var head: Emp = null
+
+  //添加雇员方法
+  //假定，添加的雇员的id是自增的，即雇员分配的id总是从小到大
+  //找到链表的最后加入即可
+  def add(emp: Emp): Unit = {
+
+    //如果是第一个雇员
+    if (head == null) {
+      head = emp
+      return
+    }
+    //定义辅助指针
+    var cur = head
+
+    breakable {
+      while (true) {
+        if (cur.next == null) {
+          break()
+        }
+        cur = cur.next
+      }
+    }
+    //这时cur 指向了链表的最后
+    cur.next = emp
+
+  }
+
+  def addSorted(emp: Emp): Unit = {
+    if (head == null) {
+      head = emp
+      return
+    }
+
+    var temp = head
+
+    var prev = new Emp(-1, "")
+    prev.next = temp
+    var findFlag = false
+    var existFlag = false // flag 是用于判断是否该编号已经存在, 默认为false
+    breakable {
+      while (true) {
+        if (temp == null) {
+          break()
+        }
+        if (temp.id > emp.id) {
+          findFlag = true
+          //找到位置
+          break()
+        } else if (temp.id == emp.id) {
+          //重复
+          existFlag = true
+          break()
+        }
+        prev = temp
+        temp = temp.next
+      }
+    }
+
+    if (existFlag) { // 不可以加入
+      printf("待插入的id %d 已经有了，不能加入\n", emp.id)
+    } else {
+      //加入，注意顺序
+      if (findFlag) {// 需要在非尾部插入
+        emp.next = temp
+        prev.next = emp
+        head = emp
+      } else { //需要在尾部插入，prev跟随者temp进行移动
+        prev.next = emp
+      }
+
+    }
+  }
+
+  //遍历链表的方法
+  def list(i: Int): Unit = {
+    if (head == null) {
+      println(s"第${i}条链表为空")
+      return
+    }
+
+    print(s"第${i}条链表信息为\t")
+    //定义辅助指针
+    var cur = head
+    breakable {
+      while (true) {
+        if (cur == null) {
+          break()
+        }
+        //输出雇员信息
+        printf(" => id=%d name=%s\t", cur.id, cur.name)
+        cur = cur.next //
+      }
+    }
+    println()
+  }
+
+  //如果有，返回emp ,没有返回null
+  def findEmpById(id: Int): Emp = {
+    //遍历
+    if (head == null) {
+      println("链表为空，没有数据~~")
+      return null
+    }
+
+    var cur = head
+
+    breakable {
+      while (true) {
+        if (cur == null) {
+          break()
+        }
+        if (cur.id == id) {
+          break()
+        }
+        cur = cur.next
+      }
+    }
+    return cur
+  }
+}
+
+
+class HashTab(val size: Int) { //size 会称为只读属性
+  val empLinkedListArr: Array[EmpLinkedList] = new Array[EmpLinkedList](size)
+  //初始化我们的empLinkedListArr 的各个元素
+  for (i <- 0 until size) {
+    empLinkedListArr(i) = new EmpLinkedList
+  }
+
+  def add(emp: Emp): Unit = {
+    //返回该员工，应该加入到那条链表
+    val empLinkedListNo = hashFun(emp.id)
+    //排序方式
+    empLinkedListArr(empLinkedListNo).addSorted(emp)
+  }
+
+  def list(): Unit = { //遍历整个hash表
+    for (i <- 0 until size) {
+      empLinkedListArr(i).list(i)
+    }
+  }
+
+  //编写一个findEmpById
+  def findEmpById(id: Int): Unit = {
+    //返回该员工，应该加入到那条链表
+    val empLinkedListNo = hashFun(id)
+    val emp = this.empLinkedListArr(empLinkedListNo).findEmpById(id)
+    if (emp != null) {
+      printf(s"在第 $empLinkedListNo 找到id=%d name=%s\n", id, emp.name)
+    } else {
+      printf("没有找到id为 %d \n", id)
+    }
+  }
+
+  //散列函数, 可以定制
+  def hashFun(id: Int): Int = {
+    id % size
+  }
+}
+```
+
+
+
+> 权：节点的值
+>
+> 叶子节点：
+>
+> 满二叉树: 所有的叶子节点都在最后一层，且节点个数总数=2^n -1，n为层数
+>
+> 完全二叉树：TODO
+
+##### 二叉树遍历：
+
+
+
+##### 顺序存储二叉树
+
+![1550132621217](assets/1550132621217.png)
+
+
+
+
+
+
+
+## 其他
+
+Scala中的breakable
+
+```scala
+import scala.util.control.Breaks._
+ breakable({
+      for (i <- 0 until(array.length)){
+        if(array(i)==7) break()
+      }
+    })
+```
+
+> 要导入头文件: scala.util.control.Breaks._
+
+
+
+scala二维数组
+
+```
+ofDim(x,y)//TODO
 ```
 
