@@ -2155,3 +2155,331 @@ public class Solution {
 }
 ```
 
+
+
+## 51构建乘积数组
+
+> 题目描述：
+>
+> 给定一个数组A[0,1,...,n-1],请构建一个数组B[0,1,...,n-1],其中B中的元素B[i]=A[0]*A[1]*...*A[i-1]*A[i+1]*...*A[n-1]。不能使用除法。
+
+- code
+
+```
+package test51;
+
+
+public class Solution {
+    public int[] multiply(int[] A) {
+        if (A == null || A.length == 0) {
+            return new int[1];
+        }
+        int[] B = new int[A.length];
+        int tmp1 = 1;
+        int[] tmp2 = new int[A.length];
+        tmp2[A.length - 1] = 1;
+        for (int i = 1; i < A.length; i++) {
+            tmp2[A.length - i - 1] = tmp2[A.length - i] * A[A.length - i];
+        }
+        for (int i = 0; i < A.length; i++) {
+            if(i!=0){
+                tmp1 *=A[i-1];
+            }
+            B[i] = tmp1 * tmp2[i];
+        }
+        return B;
+    }
+}
+```
+
+
+
+## 52正则表达式匹配
+
+> 题目描述：
+>
+> 请实现一个函数用来匹配包括'.'和'*'的正则表达式。模式中的字符'.'表示任意一个字符，而'*'表示它前面的字符可以出现任意次（包含0次）。 在本题中，匹配是指字符串的所有字符匹配整个模式。例如，字符串"aaa"与模式"a.a"和"ab*ac*a"匹配，但是与"aa.a"和"ab*a"均不匹配
+
+
+
+```java
+package test52;
+
+import org.junit.Test;
+
+/*
+题目描述
+请实现一个函数用来匹配包括'.'和'*'的正则表达式。模式中的字符'.'表示任意一个字符，
+而'*'表示它前面的字符可以出现任意次（包含0次）。 在本题中，匹配是指字符串的所有字符匹配整个模式。
+例如，字符串"aaa"与模式"a.a"和"ab*ac*a"匹配，但是与"aa.a"和"ab*a"均不匹配
+
+ */
+/*
+1>两个字符串都为空，返回true
+         2>当第一个字符串不空，而第二个字符串空了，返回false（因为这样，就无法
+            匹配成功了,而如果第一个字符串空了，第二个字符串非空，还是可能匹配成
+            功的，比如第二个字符串是“a*a*a*a*”,由于‘*’之前的元素可以出现0次，
+            所以有可能匹配成功）
+    之后就开始匹配第一个字符，这里有两种可能：匹配成功或匹配失败。但考虑到pattern
+    下一个字符可能是‘*’， 这里我们分两种情况讨论：pattern下一个字符为‘*’或
+    不为‘*’：
+          1>pattern下一个字符不为‘*’：这种情况比较简单，直接匹配当前字符。如果
+            匹配成功，继续匹配下一个；如果匹配失败，直接返回false。注意这里的
+            “匹配成功”，除了两个字符相同的情况外，还有一种情况，就是pattern的
+            当前字符为‘.’,同时str的当前字符不为‘\0’。
+          2>pattern下一个字符为‘*’时，稍微复杂一些，因为‘*’可以代表0个或多个。
+            这里把这些情况都考虑到：
+               a>当‘*’匹配0个字符时，str当前字符不变，pattern当前字符后移两位，
+                跳过这个‘*’符号；
+               b>当‘*’匹配1个或多个时，str当前字符移向下一个，pattern当前字符
+                不变。（这里匹配1个或多个可以看成一种情况，因为：当匹配一个时，
+                由于str移到了下一个字符，而pattern字符不变，就回到了上边的情况a；
+                当匹配多于一个字符时，相当于从str的下一个字符继续开始匹配）
+ */
+public class Solution {
+    @Test
+    public void test() {
+       String str1= "";
+       String str2="";
+        System.out.println(match(str1.toCharArray(), str2.toCharArray()));
+
+    }
+
+    public boolean match(char[] str, char[] pattern) {
+        if (str == null || pattern == null) {
+            return false;
+        }
+        int strIndex = 0;
+        int patternIndex = 0;
+        return matchCore(str, strIndex, pattern, patternIndex);
+    }
+
+    private boolean matchCore(char[] str, int strIndex, char[] pattern, int patternIndex) {
+        //有效性检验：str到尾，pattern到尾，匹配成功
+        if (strIndex == str.length && patternIndex == pattern.length) {
+            return true;
+        }
+        //pattern先到尾，匹配失败
+        if (strIndex != str.length && patternIndex == pattern.length) {
+            return false;
+        }
+        //模式第2个是*，且字符串第1个跟模式第1个匹配,分3种匹配模式；如不匹配，模式后移2位
+        if (patternIndex + 1 < pattern.length && pattern[patternIndex + 1] == '*') {
+            if ((strIndex != str.length && pattern[patternIndex] == str[strIndex]) || (pattern[patternIndex] == '.' && strIndex != str.length)) {
+                return matchCore(str, strIndex, pattern, patternIndex + 2)//模式后移2，视为x*匹配0个字符
+                        || matchCore(str, strIndex + 1, pattern, patternIndex + 2)//视为模式匹配1个字符
+                        || matchCore(str, strIndex + 1, pattern, patternIndex);//*匹配1个，再匹配str中的下一个
+            } else {
+                return matchCore(str, strIndex, pattern, patternIndex + 2);
+            }
+        }
+        //模式第2个不是*，且字符串第1个跟模式第1个匹配，则都后移1位，否则直接返回false
+        if ((strIndex != str.length && pattern[patternIndex] == str[strIndex]) || (pattern[patternIndex] == '.' && strIndex != str.length)) {
+            return matchCore(str, strIndex + 1, pattern, patternIndex + 1);
+        }
+        return false;
+    }
+
+}
+```
+
+
+
+## 53表示数值的字符串
+
+> 题目描述:
+>
+> 请实现一个函数用来判断字符串是否表示数值（包括整数和小数）。例如，字符串"+100","5e2","-123","3.1416"和"-1E-16"都表示数值。 但是"12e","1a3.14","1.2.3","+-5"和"12e+4.3"都不是。
+
+
+
+```
+package test53;
+
+import org.junit.Test;
+/*
+题目描述
+请实现一个函数用来判断字符串是否表示数值（包括整数和小数）。例如，字符串"+100","5e2","-123","3.1416"
+和"-1E-16"都表示数值。 但是"12e","1a3.14","1.2.3","+-5"和"12e+4.3"都不是。
+ */
+public class Solution {
+    @Test
+    public void test() {
+        String str = "+100";
+        String str2 = "5e2";
+        String str3 = "-123";
+        String str4 = "3.1416";
+        System.out.println(isNumeric(str.toCharArray()));
+        System.out.println(isNumeric(str2.toCharArray()));
+        System.out.println(isNumeric(str3.toCharArray()));
+        System.out.println(isNumeric(str4.toCharArray()));
+    }
+    /*正则表达式前面
+        前面符号位+-
+        数字[0-9]
+        .小数点
+        [0-9]
+        [eE]
+        后面是+-
+        数字0-9
+        
+        char[]数组转化为String时使用String.valueOf()
+        正则表达式中不能出现空格，否则会出错
+     */
+    public boolean isNumeric(char[] str) {
+        return String.valueOf(str).matches("[+-]?[0-9]*(\\.[0-9]*)?([eE][+-]?[0-9]+)?");
+    }
+
+}
+```
+
+
+
+## 54字符流中第一个不重复的字符
+
+
+
+> 题目描述：
+>
+> 请实现一个函数用来找出字符流中第一个只出现一次的字符。例如，当从字符流中只读出前两个字符"go"时，第一个只出现一次的字符是"g"。当从该字符流中读出前六个字符“google"时，第一个只出现一次的字符是"l"。
+>
+> 输出描述：
+>
+> ```
+> 如果当前字符流没有存在出现一次的字符，返回#字符。
+> ```
+
+
+
+注：==要使用可以保持插入顺序的容器,HashMap不可以保持插入顺序==
+
+```java
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/*
+题目描述
+请实现一个函数用来找出字符流中第一个只出现一次的字符。例如，当从字符流中只读出前两个字符"go"时，
+第一个只出现一次的字符是"g"。当从该字符流中读出前六个字符“google"时，第一个只出现一次的字符是"l"。
+输出描述:
+如果当前字符流没有存在出现一次的字符，返回#字符。
+ */
+public class Solution {
+//    @Test
+//    public  void test(){
+//        Insert('g');
+//        Insert('o');
+//        Insert('o');
+//        Insert('g');
+//        Insert('l');
+//        Insert('e');
+//        System.out.println(FirstAppearingOnce());
+//    }
+
+    Map<Character, Integer> map = new LinkedHashMap<>();
+
+    public void Insert(char ch)
+    {
+        if(map.containsKey(ch)){
+            Integer cnt = map.get(ch);
+            map.put(ch, cnt+1);
+        }else{
+            map.put(ch, 1);
+        }
+    }
+    //return the first appearence once char in current stringstream
+    public char FirstAppearingOnce()
+    {
+        for (Map.Entry<Character, Integer> entry : map.entrySet()) {
+            if(entry.getValue() ==1){
+                return entry.getKey();
+            }
+        }
+        return '#';
+    }
+
+}
+```
+
+
+
+
+
+## 55链表中换的入口结点
+
+> 题目描述
+>
+> 给一个链表，若其中包含环，请找出该链表的环的入口结点，否则，输出null。
+
+
+
+```java
+package test55;
+
+
+import org.junit.Test;
+
+class ListNode {
+    int val;
+    ListNode next = null;
+
+    ListNode(int val) {
+        this.val = val;
+    }
+}
+
+
+/*
+题目描述
+给一个链表，若其中包含环，请找出该链表的环的入口结点，否则，输出null。
+ */
+public class Solution {
+    @Test
+    public void test(){
+        ListNode listNode1 = new ListNode(1);
+        ListNode listNode2 = new ListNode(2);
+        ListNode listNode3 = new ListNode(3);
+        ListNode listNode4 = new ListNode(4);
+        ListNode listNode5 = new ListNode(5);
+        ListNode listNode6 = new ListNode(6);
+        listNode1.next = listNode2;
+        listNode2.next=listNode3;
+        listNode3.next = listNode4;
+        listNode4.next = listNode5;
+        listNode5.next = listNode6;
+        listNode6.next = listNode3;
+        System.out.println(EntryNodeOfLoop(listNode1).val);
+    }
+
+    /*
+        注： 有两点： 一：第一步查找是否有环时，使用快慢指针方式，快指针走两步，慢指针走一步
+                     二：当确定有环以后，满指针重新指向头结点，然后两个一起走，同时每次走一步，这样可以找到入口节点
+     */
+    public ListNode EntryNodeOfLoop(ListNode pHead) {
+        //防御性编程
+        if(pHead == null || pHead.next == null || pHead.next.next==null){
+            return null;
+        }
+        ListNode slow = pHead.next;
+        ListNode fast = slow.next;
+        while(slow != fast){
+            if(slow.next != null && slow.next.next !=null){
+                slow = slow.next; //慢指针走一步
+                fast= fast.next.next; //快指针走两步
+            }else{
+                return null;
+            }
+        }
+        //此时循环出来以后，就是有环链表
+        slow = pHead;//重新指向头结点
+        while(slow!= fast){
+            slow=slow.next;
+            fast=fast.next;
+        }
+        return slow;
+
+    }
+}
+```
+

@@ -2983,7 +2983,7 @@ job.setCombinerClass(WordcountReducer.class);
 
   
 
-  
+
   1．需求
   有如下订单数据
   表4-2 订单数据
@@ -4934,10 +4934,10 @@ public class FlowBean implements WritableComparable<FlowBean>{
 ​		this.downFlow = downFlow;
 ​	}
 ​	
-	public long getSumFlow() {
-		return sumFlow;
-	}
-	
+​	public long getSumFlow() {
+​		return sumFlow;
+​	}
+​	
 	public void setSumFlow(long sumFlow) {
 		this.sumFlow = sumFlow;
 	}
@@ -5453,4 +5453,26 @@ public void close(TaskAttemptContext context) throws IOException, InterruptedExc
 			otherfos.close();
 		}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Hadoop扩展
+
+
+
+#### Yarn源码分析之参数mapreduce.job.reduce.slowstart.completedmaps介绍
+
+
 

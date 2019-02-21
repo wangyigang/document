@@ -1,6 +1,4 @@
-
-
-##### Hive基本概念
+Hive基本概念
 
 ###### 什么是Hive
 
@@ -18,8 +16,7 @@
 
 ###### 优点：
 
-- 操作接口采用类SQL语法，简单，易上手
-- 避免了去写MapReduce，减少开发人员的学习成本
+- 操作接口采用类SQL语法，简单，易上手， 避免了去写MapReduce，减少开发人员的学习成本
 - Hive调度执行延迟较高，因此Hive常用于数据分析，对实时性要求不高的场合
 - Hive支持用户自定义函数，用户可以根据自己的需求来实现自己的函数
 
@@ -298,7 +295,7 @@ bin/hdfs dfs -chmod g+w /user/hive/warehouse
 
  ![1549418196871](assets/1549418196871.png)
 
-### **2.9.3 Hive运行日志信息配置**
+### **Hive运行日志信息配置**
 
 1．Hive的log默认存放在/tmp/atguigu/hive.log目录下（当前用户名下）
 
@@ -362,9 +359,9 @@ hive (default)> select friends[1],children['xiao song'],address.city from testwh
 1．隐式类型转换规则如下
 
 ```
-任何整数类型都可以隐式地转换为一个范围更广的类型，如TINYINT可以转换成INT，INT可以转换成BIGINT。
-所有整数类型、FLOAT和STRING类型都可以隐式地转换成DOUBLE。//string类型可以解析成double
-TINYINT、SMALLINT、INT都可以转换为FLOAT。
+1.任何整数类型都可以隐式地转换为一个范围更广的类型，如TINYINT可以转换成INT，INT可以转换成BIGINT。
+2. 所有整数类型、FLOAT和STRING类型都可以隐式地转换成DOUBLE。//string可以转，前提是可以解析成功
+3. TINYINT、SMALLINT、INT都可以转换为FLOAT。
 BOOLEAN类型不可以转换为任何其它的类型。
 ```
 
@@ -971,7 +968,7 @@ hive (default)> load data inpath '/user/atguigu/hive/student.txt' overwrite into
 
 
 
-### **5.1.2 通过查询语句向表中插入数据（Insert）**
+##### **通过查询语句向表中插入数据（Insert）**
 
 1．创建一张分区表
 
@@ -1005,7 +1002,7 @@ hive (default)> from student
 
 ​              select id, name where month='201709';
 
-### **5.1.3 查询语句中创建表并加载数据（As Select）**
+### **查询语句中创建表并加载数据（As Select）**
 
 详见4.5.1章创建表。
 
@@ -1015,7 +1012,7 @@ create table if not exists student3
 
 as select id, name from student;
 
-### **5.1.4 创建表时通过Location指定加载数据路径**
+### **创建表时通过Location指定加载数据路径**
 
 1．上传数据到hdfs上
 
@@ -1039,7 +1036,7 @@ hive (default)> create external table if not exists student5(
 
 hive (default)> select * from student5;
 
-### **5.1.5 Import数据到指定Hive表中**
+### **Import数据到指定Hive表中**
 
 注意：先用export导出后，再将数据导入。//路径只能是hdfs上的路径
 
@@ -1047,9 +1044,9 @@ hive (default)> import table student2 partition(month='201709') from
 
  '/user/hive/warehouse/export/student';
 
-## **5.2 数据导出**
+## **数据导出**
 
-### **5.2.1 Insert导出**
+#### **Insert导出**
 
 1．将查询的结果导出到本地 //导出时只能是overwrite
 
@@ -1071,13 +1068,13 @@ hive (default)> insert overwrite directory '/user/atguigu/student2'
 
 ​             select * from student;
 
-### **5.2.2 Hadoop命令导出到本地**
+### **Hadoop命令导出到本地**
 
 hive (default)> dfs -get /user/hive/warehouse/student/month=201709/000000_0
 
 /opt/module/datas/export/student3.txt;
 
-### **5.2.3 Hive Shell 命令导出**
+### **Hive Shell 命令导出**
 
 基本语法：（hive -f/-e 执行语句或者脚本 > file）
 
@@ -1085,7 +1082,7 @@ hive (default)> dfs -get /user/hive/warehouse/student/month=201709/000000_0
 
  /opt/module/datas/export/student4.txt;
 
-### **5.2.4 Export导出到HDFS上**
+### **Export导出到HDFS上**
 
 (defahiveult)> export table default.student to
 
@@ -1093,17 +1090,17 @@ hive (default)> dfs -get /user/hive/warehouse/student/month=201709/000000_0
 
 export和import主要用于两个Hadoop平台集群之间Hive表迁移。//里面还有metadata
 
-### **5.2.5 Sqoop导出**
+### **Sqoop导出**
 
 后续课程专门讲。
 
-## **5.3 清除表中数据（Truncate）**
+## **清除表中数据（Truncate）**
 
 注意：Truncate只能删除管理表，不能删除外部表中数据//只能删除管理表，不能删除外部表数据 
 
 hive (default)> truncate table student;
 
-# **第6章** **查询**
+#### **查询**
 
 <https://cwiki.apache.org/confluence/display/Hive/LanguageManual+Select>
 
@@ -1111,9 +1108,9 @@ hive (default)> truncate table student;
 
 [WITH CommonTableExpression (, CommonTableExpression)*]    (Note: Only available starting with Hive 0.13.0)SELECT [ALL | DISTINCT] select_expr, select_expr, ...  FROM table_reference  [WHERE where_condition]  [GROUP BY col_list]  [ORDER BY col_list]  [CLUSTER BY col_list    | [DISTRIBUTE BY col_list] [SORT BY col_list]  ] [LIMIT number]
 
-## **6.1 基本查询（Select…From）**
+#### **基本查询（Select…From）**
 
-### **6.1.1 全表和特定列查询**
+##### **全表和特定列查询**
 
 创建部门表
 
@@ -1151,7 +1148,7 @@ hive (default)> select empno, ename from emp;
 
 （5）使用缩进提高语句的可读性。
 
-### **6.1.2 列别名**
+##### **列别名**
 
 1．重命名一个列
 
@@ -1165,9 +1162,7 @@ hive (default)> select empno, ename from emp;
 
 hive (default)> select ename AS name, deptno dn from emp;
 
-### **6.1.3 算术运算符**
-
-表6-3
+##### **算术运算符**
 
 | 运算符 | 描述           |
 | ------ | -------------- |
@@ -1187,7 +1182,7 @@ hive (default)> select ename AS name, deptno dn from emp;
 
 hive (default)> select sal +1 from emp;
 
-### **6.1.4 常用函数**
+##### **常用函数**
 
 1．求总行数（count）
 
@@ -1209,13 +1204,13 @@ hive (default)> select sum(sal) sum_sal from emp;
 
 hive (default)> select avg(sal) avg_sal from emp;
 
-### **6.1.5 Limit语句**
+##### **Limit语句**
 
 典型的查询会返回多行数据。LIMIT子句用于限制返回的行数。
 
 hive (default)> select * from emp limit 5;
 
-## **6.2 Where语句**
+#### **Where语句**
 
 1．使用WHERE子句，将不满足条件的行过滤掉
 
@@ -1229,11 +1224,9 @@ hive (default)> select * from emp where sal >1000;
 
 注意：where子句中不能使用字段别名。//执行顺序先执行where ，所以不知道是哪个？
 
-### **6.2.1 比较运算符（Between/In/ Is Null）**
+##### **比较运算符（Between/In/ Is Null）**
 
 1）下面表中描述了谓词操作符，这些操作符同样可以用于JOIN…ON和HAVING语句中。
-
-表6-4
 
 | 操作符                  | 支持的数据类型 | 描述                                                         |
 | ----------------------- | -------------- | ------------------------------------------------------------ |
@@ -1269,7 +1262,7 @@ hive (default)> select * from emp where comm is null;
 
 hive (default)> select * from emp where sal IN (1500, 5000);
 
-### **6.2.2 Like和RLike**
+##### **Like和RLike**
 
 1）使用LIKE运算选择类似的值
 
@@ -1295,9 +1288,7 @@ hive (default)> select * from emp where sal LIKE '_2%';
 
 hive (default)> select * from emp where sal RLIKE '[2]';
 
-### **6.2.3 逻辑运算符（And/Or/Not）**
-
-表6-5
+##### **逻辑运算符（And/Or/Not）**
 
 | 操作符 | 含义   |
 | ------ | ------ |
@@ -1319,9 +1310,9 @@ hive (default)> select * from emp where sal>1000 or deptno=30;
 
 hive (default)> select * from emp where deptno not IN(30, 20);
 
-## **6.3 分组**
+##### **分组**
 
-### **6.3.1 Group By语句**
+##### **Group By语句**
 
 GROUP BY语句通常会和聚合函数一起使用，按照一个或者多个列队结果进行分组，然后对每个组执行聚合操作。
 
@@ -1337,11 +1328,7 @@ hive (default)> select t.deptno, t.job, max(t.sal) max_sal from emp t group by
 
  t.deptno, t.job;
 
-### **6.3.2 Having语句**
-
- 
-
- 
+##### **Having语句**
 
 1．having与where不同点
 
@@ -1363,9 +1350,9 @@ hive (default)> select deptno, avg(sal) avg_sal from emp group by deptno having
 
  avg_sal > 2000;
 
-## **6.4 Join语句**
+#### **Join语句**
 
-### **6.4.1 等值Join**
+##### **等值Join**
 
 Hive支持通常的SQL JOIN语句，但是只支持等值连接，不支持非等值连接。
 
@@ -1375,7 +1362,7 @@ Hive支持通常的SQL JOIN语句，但是只支持等值连接，不支持非�
 
 hive (default)> select e.empno, e.ename, d.deptno, d.dname from emp e join dept d on e.deptno = d.deptno;
 
-### **6.4.2 表的别名**
+##### **表的别名**
 
 1．好处
 
@@ -1391,7 +1378,7 @@ hive (default)> select e.empno, e.ename, d.deptno from emp e join dept d on e.de
 
  = d.deptno;
 
-### **6.4.3 内连接**
+##### **内连接**
 
 内连接：只有进行连接的两个表中都存在与连接条件相匹配的数据才会被保留下来。
 
@@ -1399,19 +1386,19 @@ hive (default)> select e.empno, e.ename, d.deptno from emp e join dept d on e.de
 
  = d.deptno;
 
-### **6.4.4 左外连接**
+##### **左外连接**
 
 左外连接：JOIN操作符左边表中符合WHERE子句的所有记录将会被返回。
 
 hive (default)> select e.empno, e.ename, d.deptno from emp e left join dept d on e.deptno = d.deptno;
 
-### **6.4.5 右外连接**
+**右外连接**
 
 右外连接：JOIN操作符右边表中符合WHERE子句的所有记录将会被返回。
 
 hive (default)> select e.empno, e.ename, d.deptno from emp e right join dept d on e.deptno = d.deptno;
 
-### **6.4.6 满外连接**
+##### **满外连接**
 
 ​	满外连接：将会返回所有表中符合WHERE语句条件的所有记录。如果任一表的指定字段没有符合条件的值的话，那么就使用NULL值替代。
 
@@ -1419,13 +1406,11 @@ hive (default)> select e.empno, e.ename, d.deptno from emp e full join dept d on
 
  = d.deptno;
 
-### **6.4.7 多表连接**
+##### **多表连接**
 
 注意：连接 n个表，至少需要n-1个连接条件。例如：连接三个表，至少需要两个连接条件。
 
 数据准备
-
-![img](file:///C:\Users\wangyg\AppData\Local\Temp\ksohtml\wpsF384.tmp.png)
 
 1．创建位置表
 
@@ -1455,7 +1440,7 @@ ON     d.loc = l.loc;
 
 优化：当对3个或者更多表进行join连接时，如果每个on子句都使用相同的连接键的话，那么只会产生一个MapReduce job。
 
-### **6.4.8 笛卡尔积**
+**笛卡尔积**
 
 1．笛卡尔集会在下面条件下产生
 
@@ -1469,7 +1454,7 @@ ON     d.loc = l.loc;
 
 hive (default)> select empno, dname from emp, dept;
 
-### **6.4.9 连接谓词中不支持or**
+##### **连接谓词中不支持or**
 
 hive join目前不支持在on子句中使用谓词or
 
@@ -1477,9 +1462,9 @@ hive (default)> select e.empno, e.ename, d.deptno from emp e join dept d on e.de
 
 = d.deptno or e.ename=d.ename;   错误的
 
-## **6.5 排序**
+#### **排序**
 
-### **6.5.1 全局排序（Order By）**
+##### **全局排序（Order By）**
 
 Order By：全局排序，只有一个Reducer
 
@@ -1501,19 +1486,19 @@ hive (default)> select * from emp order by sal;
 
 hive (default)> select * from emp order by sal desc;
 
-### **6.5.2 按照别名排序**
+### **按照别名排序**
 
 按照员工薪水的2倍排序
 
 hive (default)> select ename, sal*2 twosal from emp order by twosal;
 
-### **6.5.3 多个列排序**
+### **多个列排序**
 
 按照部门和工资升序排序
 
 hive (default)> select ename, deptno, sal from emp order by deptno, sal ;
 
-### **6.5.4 每个MapReduce内部排序（Sort By）**
+### **每个MapReduce内部排序（Sort By）**
 
 Sort By：对于大规模的数据集order by的效率非常低。在很多情况下，并不需要全局排序，此时可以使用**sort by**。
 
@@ -1541,7 +1526,7 @@ hive (default)> insert overwrite local directory '/opt/module/datas/sortby-resul
 
  select * from emp sort by deptno desc;
 
-### **6.5.5 分区排序（Distribute By）**
+##### **分区排序（Distribute By）**
 
 Distribute By： 在有些情况下，我们需要控制某个特定行应该到哪个reducer，通常是为了进行后续的聚集操作。**distribute by** 子句可以做这件事。**distribute by**类似MR中partition（自定义分区），进行分区，结合sort by使用。 
 
@@ -1561,7 +1546,7 @@ hive (default)> insert overwrite local directory '/opt/module/datas/distribute-r
 
 2． Hive要求DISTRIBUTE BY语句要写在SORT BY语句之前。
 
-### **6.5.6 Cluster By**
+##### **Cluster By**
 
 当distribute by和sorts by字段相同时，可以使用cluster by方式。
 
@@ -1575,45 +1560,15 @@ hive (default)> select * from emp distribute by deptno sort by deptno;
 
 注意：按照部门编号分区，不一定就是固定死的数值，可以是20号和30号部门分到一个分区里面去。
 
-## **6.6 分桶及抽样查询**
+#### **分桶及抽样查询**
 
-### **6.6.1 分桶表数据存储**
+##### **分桶表数据存储**
 
 分区提供一个隔离数据和优化查询的便利方式。不过，并非所有的数据集都可形成合理的分区。对于一张表或者分区，Hive 可以进一步组织成桶，也就是更为细粒度的数据范围划分。
 
 分桶是将数据集分解成更容易管理的若干部分的另一个技术。
 
 分区针对的是数据的存储路径；分桶针对的是数据文件。
-
-1．先创建分桶表，通过直接导入数据文件的方式
-
-（1）数据准备
-
-![img](file:///C:\Users\wangyg\AppData\Local\Temp\ksohtml\wpsF394.tmp.png)
-
-（2）创建分桶表
-
-create table stu_buck(id int, name string)clustered by(id) into 4 bucketsrow format delimited fields terminated by '\t';
-
-（3）查看表结构
-
-hive (default)> desc formatted stu_buck;
-
-Num Buckets:            4     
-
-（4）导入数据到分桶表中
-
-hive (default)> load data local inpath '/opt/module/datas/student.txt' into table
-
- stu_buck;
-
-（5）查看创建的分桶表中是否分成4个桶，如图6-7所示
-
-![img](file:///C:\Users\wangyg\AppData\Local\Temp\ksohtml\wpsF3A5.tmp.jpg) 
-
-图6-7 未分桶
-
-发现并没有分成4个桶。是什么原因呢？
 
 2．创建分桶表时，数据通过子查询的方式导入
 
@@ -1633,25 +1588,19 @@ truncate table stu_buck;select * from stu_buck;
 
 insert into table stu_buckselect id, name from stu;
 
-（5）发现还是只有一个分桶，如图6-8所示
-
-![img](file:///C:\Users\wangyg\AppData\Local\Temp\ksohtml\wpsF3B5.tmp.jpg) 
-
-图6-8 未分桶
+（5）发现还是只有一个分桶
 
 （6）需要设置一个属性
 
 hive (default)> set hive.enforce.bucketing=true;hive (default)> set mapreduce.job.reduces=-1;hive (default)> insert into table stu_buckselect id, name from stu;
 
-![img](file:///C:\Users\wangyg\AppData\Local\Temp\ksohtml\wpsF3C6.tmp.jpg) 
 
-图6-9 分桶
 
 （7）查询分桶的数据
 
 hive (default)> select * from stu_buck;OKstu_buck.id     stu_buck.name1004    ss41008    ss81012    ss121016    ss161001    ss11005    ss51009    ss91013    ss131002    ss21006    ss61010    ss101014    ss141003    ss31007    ss71011    ss111015    ss15分桶规则：根据结果可知：Hive的分桶采用对分桶字段的值进行哈希，然后除以桶的个数求余的方式决定该条记录存放在哪个桶当中
 
-### **6.6.2 分桶抽样查询**
+### **分桶抽样查询**
 
 对于非常大的数据集，有时用户需要使用的是一个具有代表性的查询结果而不是全部结果。Hive可以通过对表进行抽样来满足这个需求。
 
@@ -1669,91 +1618,27 @@ x表示从哪个bucket开始抽取，如果需要取多个分区，以后的分�
 
 FAILED: SemanticException [Error 10061]: Numerator should not be bigger than denominator in sample clause for table stu_buck
 
-## **6****.7** **其他常用查询函数**
+#### **其他常用查询函数**
 
-### **6****.7.1** **空字段赋值**
+#####  **空字段赋值**
 
-\1. 函数说明
+1. 函数说明
 
 NVL：给值为NULL的数据赋值，它的格式是NVL( value，default_value)。它的功能是如果value为NULL，则NVL函数返回default_value的值，否则返回value的值，如果两个参数都为NULL ，则返回NULL。
 
-\2. 数据准备：采用员工表
-
-\3. 查询：如果员工的comm为NULL，则用-1代替
+2. 查询：如果员工的comm为NULL，则用-1代替
 
 hive (default)> select comm,nvl(comm, -1) from emp;
 
-OK
-
-comm    _c1
-
-NULL    -1.0
-
-300.0   300.0
-
-500.0   500.0
-
-NULL    -1.0
-
-1400.0  1400.0
-
-NULL    -1.0
-
-NULL    -1.0
-
-NULL    -1.0
-
-NULL    -1.0
-
-0.0     0.0
-
-NULL    -1.0
-
-NULL    -1.0
-
-NULL    -1.0
-
-NULL    -1.0
-
-\4. 查询：如果员工的comm为NULL，则用领导id代替
+3. 查询：如果员工的comm为NULL，则用领导id代替
 
 hive (default)> select comm, nvl(comm,mgr) from emp;
 
-OK
 
-comm    _c1
 
-NULL    7902.0
+##### **CASE WHEN**
 
-300.0   300.0
-
-500.0   500.0
-
-NULL    7839.0
-
-1400.0  1400.0
-
-NULL    7839.0
-
-NULL    7839.0
-
-NULL    7566.0
-
-NULL    NULL
-
-0.0     0.0
-
-NULL    7788.0
-
-NULL    7698.0
-
-NULL    7566.0
-
-NULL    7782.0
-
-### **6****.7.2 CASE WHEN**
-
-\1. 数据准备
+1. 数据准备
 
 | name | dept_id | sex  |
 | ---- | ------- | ---- |
@@ -1810,7 +1695,7 @@ case when a=b ...
 
 select   dept_id,  sum(case sex when '男' then 1 else 0 end) male_count,  sum(case sex when '女' then 1 else 0 end) female_countfrom   emp_sexgroup by  dept_id;
 
-### **6.7****.2** **行转列**
+### **行转列**
 
 1．相关函数说明
 
@@ -1821,8 +1706,6 @@ CONCAT_WS(separator, str1, str2,...)：它是一个特殊形式的 CONCAT()。�
 COLLECT_SET(col)：函数只接受基本数据类型，它的主要作用是将某字段的值进行去重汇总，产生array类型字段。//进行汇总
 
 2．数据准备
-
-表6-6 数据准备
 
 | name   | constellation | blood_type |
 | ------ | ------------- | ---------- |
@@ -1874,7 +1757,7 @@ load data local inpath "/opt/module/datas/constellation.txt" into table person_i
 
 select    t1.base,    concat_ws('|', collect_set(t1.name)) namefrom    (select        name,        concat(constellation, ",", blood_type) base    from        person_info) t1group by    t1.base;
 
-### **6.****7.3** **列转行**
+##### **列转行**
 
 1．函数说明
 
@@ -1887,8 +1770,6 @@ LATERAL VIEW //位置：from之后
 解释：用于和split, explode等UDTF一起使用，它能够将一列数据拆成多行数据，在此基础上可以对拆分后的数据进行聚合。
 
 2．数据准备
-
-表6-7 数据准备
 
 | movie         | category                 |
 | ------------- | ------------------------ |
@@ -1942,7 +1823,7 @@ create table movie_info(    movie string,     category array<string>) row format
 
 select    movie,    category_namefrom     movie_info lateral view explode(category) table_tmp as category_name;
 
-### **6.****7.4** **窗口函数（开窗函数）**
+##### **窗口函数（开窗函数）**
 
 1．相关函数说明
 
@@ -2028,7 +1909,7 @@ select name,orderdate,cost, lag(orderdate,1,'1900-01-01') over(partition by name
 
 select * from (    select name,orderdate,cost, ntile(5) over(order by orderdate) sorted    from business) twhere sorted = 1;
 
-### **6****.7.5** **Rank**
+##### **Rank**
 
 1．函数说明
 
@@ -2039,8 +1920,6 @@ DENSE_RANK() 排序相同时会重复，总数会减少//稠密的，数字不�
 ROW_NUMBER() 会根据顺序计算(不会重复1234)
 
 2．数据准备
-
-表6-7 数据准备
 
 | name   | subject | score |
 | ------ | ------- | ----- |
@@ -2073,9 +1952,9 @@ create table score(name string,subject string, score int) row format delimited f
 
 select name,subject,score,rank() over(partition by subject order by score desc) rp,dense_rank() over(partition by subject order by score desc) drp,row_number() over(partition by subject order by score desc) rmpfrom score; name    subject score   rp      drp     rmp孙悟空  数学    95      1       1       1宋宋    数学    86      2       2       2婷婷    数学    85      3       3       3大海    数学    56      4       4       4宋宋    英语    84      1       1       1大海    英语    84      1       1       2婷婷    英语    78      3       2       3孙悟空  英语    68      4       3       4大海    语文    94      1       1       1孙悟空  语文    87      2       2       2婷婷    语文    65      3       3       3宋宋    语文    64      4       4       4 扩展：求出每门学科前三名的学生？
 
-# **第7章** **函数**
+### **函数**
 
-## **7.****1** **系统****内置****函数**
+##### 系统内置函数
 
 1．查看系统自带的函数
 
@@ -2089,7 +1968,7 @@ hive> desc function upper;
 
 hive> desc function extended upper;
 
-## **7.2 自定义函数**
+##### **自定义函数**
 
 1）Hive 自带了一些函数，比如：max/min等，但是数量有限，自己可以通过自定义UDF来方便的扩展。
 
@@ -2141,37 +2020,68 @@ Drop [temporary] function [if exists] [dbname.]function_name;
 
 ​	（1）UDF必须要有返回类型，可以返回null，但是返回类型不能为void；
 
-## **7.3 自定义UDF函数**
+#### **自定义UDF函数**
 
 1．创建一个Maven工程Hive
 
 2．导入依赖
 
-<dependencies>		<!-- https://mvnrepository.com/artifact/org.apache.hive/hive-exec -->		<dependency>			<groupId>org.apache.hive</groupId>			<artifactId>hive-exec</artifactId>			<version>1.2.1</version>		</dependency></dependencies>
+```
+<dependencies>
+		<!-- https://mvnrepository.com/artifact/org.apache.hive/hive-exec -->
+		<dependency>
+			<groupId>org.apache.hive</groupId>
+			<artifactId>hive-exec</artifactId>
+			<version>1.2.1</version>
+		</dependency>
+</dependencies>
+```
 
 3．创建一个类
 
-package com.atguigu.hive;import org.apache.hadoop.hive.ql.exec.UDF; public class Lower extends UDF { 	public String evaluate (final String s) {				if (s == null) {			return null;		}				return s.toLowerCase();	}}
+```
+package com.atguigu.hive;
+import org.apache.hadoop.hive.ql.exec.UDF;
+
+public class Lower extends UDF {
+
+	public String evaluate (final String s) {
+		
+		if (s == null) {
+			return null;
+		}
+		return s.toLowerCase();
+	}
+}
+```
 
 4．打成jar包上传到服务器/opt/module/jars/udf.jar
 
 5．将jar包添加到hive的classpath
 
+```
 hive (default)> add jar /opt/module/datas/udf.jar;
+```
 
 6．创建临时函数与开发好的java class关联
 
+```
 hive (default)> create temporary function mylower as "com.atguigu.hive.Lower";
+```
 
 7．即可在hql中使用自定义的函数strip 
 
+```
 hive (default)> select ename, mylower(ename) lowername from emp;
+```
 
-# **第8章** **压缩和存储**
 
-## **8.1 Hadoop源码编译支持Snappy压缩**
 
-### **8.1.1 资源准备**
+#### **压缩和存储**
+
+##### **Hadoop源码编译支持Snappy压缩**
+
+##### 资源准备
 
 1．CentOS联网 
 
@@ -2191,7 +2101,7 @@ hive (default)> select ename, mylower(ename) lowername from emp;
 
 （5）protobuf-2.5.0.tar.gz
 
-### **8.1.2 jar包安装**
+##### **jar包安装**
 
 注意：所有操作必须在root用户下完成
 
@@ -2219,7 +2129,7 @@ hive (default)> select ename, mylower(ename) lowername from emp;
 
 验证命令：mvn -version
 
-### **8.1.3 编译源码**
+**编译源码**
 
 1．准备编译环境
 
@@ -2276,11 +2186,9 @@ hive (default)> select ename, mylower(ename) lowername from emp;
 
  
 
-## **8.2 Hadoop压缩配置**
+#### **Hadoop压缩配置**
 
-### **8.2.1 MR支持的压缩编码**
-
-表6-8
+##### **MR支持的压缩编码**
 
 | 压缩格式 | 工具  | 算法    | 文件扩展名 | 是否可切分 |
 | -------- | ----- | ------- | ---------- | ---------- |
@@ -2292,8 +2200,6 @@ hive (default)> select ename, mylower(ename) lowername from emp;
 
 为了支持多种压缩/解压缩算法，Hadoop引入了编码/解码器，如下表所示：
 
-表6-9
-
 | 压缩格式 | 对应的编码/解码器                          |
 | -------- | ------------------------------------------ |
 | DEFLATE  | org.apache.hadoop.io.compress.DefaultCodec |
@@ -2303,8 +2209,6 @@ hive (default)> select ename, mylower(ename) lowername from emp;
 | Snappy   | org.apache.hadoop.io.compress.SnappyCodec  |
 
 压缩性能的比较：
-
-表6-10
 
 | 压缩算法 | 原始文件大小 | 压缩文件大小 | 压缩速度 | 解压速度 |
 | -------- | ------------ | ------------ | -------- | -------- |
@@ -2316,11 +2220,9 @@ hive (default)> select ename, mylower(ename) lowername from emp;
 
 On a single core of a Core i7 processor in 64-bit mode, Snappy compresses at about 250 MB/sec or more and decompresses at about 500 MB/sec or more.
 
-### **8.2.2 压缩参数配置**
+##### **压缩参数配置**
 
 要在Hadoop中启用压缩，可以配置如下参数（mapred-site.xml文件中）：
-
-表6-11
 
 | 参数                                              | 默认值                                                       | 阶段        | 建议                                         |
 | ------------------------------------------------- | ------------------------------------------------------------ | ----------- | -------------------------------------------- |
@@ -2333,7 +2235,7 @@ On a single core of a Core i7 processor in 64-bit mode, Snappy compresses at abo
 
  
 
-## **8.3 开启Map输出阶段压缩**
+##### **开启Map输出阶段压缩**
 
 开启map输出阶段压缩可以减少job中map和Reduce task间数据传输量。具体配置如下：
 
@@ -2357,7 +2259,7 @@ hive (default)>set mapreduce.map.output.compress.codec=
 
 ​	hive (default)> select count(ename) name from emp;
 
-## **8.4 开启Reduce输出阶段压缩**
+#### **开启Reduce输出阶段压缩**
 
 当Hive将输出写入到表中时，输出内容同样可以进行压缩。属性hive.exec.compress.output控制着这个功能。用户可能需要保持默认设置文件中的默认值false，这样默认的输出就是非压缩的纯文本文件了。用户可以通过在查询语句或执行脚本中设置这个值为true，来开启输出结果压缩功能。
 
@@ -2387,17 +2289,11 @@ hive (default)> insert overwrite local directory
 
  '/opt/module/datas/distribute-result' select * from emp distribute by deptno sort by empno desc;
 
-## **8.5 文件存储格式**
+#### **文件存储格式**
 
 Hive支持的存储数据的格式主要有：TEXTFILE 、SEQUENCEFILE、ORC、PARQUET。
 
-### **8.5.1 列式存储和行式存储**
-
-![img](file:///C:\Users\wangyg\AppData\Local\Temp\ksohtml\wpsF406.tmp.jpg) 
-
-图6-10 列式存储和行式存储
-
-如图6-10所示左边为逻辑表，右边第一个为行式存储，第二个为列式存储。
+##### **列式存储和行式存储** 
 
 1．行存储的特点
 
@@ -2411,19 +2307,17 @@ TEXTFILE和SEQUENCEFILE的存储格式都是基于行存储的；
 
 ORC和PARQUET是基于列式存储的。
 
-### **8.5.2 TextFile格式**
+##### **TextFile格式**
 
 默认格式，数据不做压缩，磁盘开销大，数据解析开销大。可结合Gzip、Bzip2使用，但使用Gzip这种方式，hive不会对数据进行切分，从而无法对数据进行并行操作。
 
-### **8.5.3 Orc格式**
+##### **Orc格式**
 
 Orc (Optimized Row Columnar)是Hive 0.11版里引入的新的存储格式。
 
 如图6-11所示可以看到每个Orc文件由1个或多个stripe组成，每个stripe一般为HDFS的块大小，每一个stripe包含多条记录，这些记录按照列进行独立存储，对应到Parquet中的row group的概念。每个Stripe里有三部分组成，分别是Index Data，Row Data，Stripe Footer：
 
-![img](file:///C:\Users\wangyg\AppData\Local\Temp\ksohtml\wpsF416.tmp.png) 
 
-图6-11 Orc格式
 
    	1）Index Data：一个轻量级的index，默认是每隔1W行做一个索引。这里做的索引应该只是记录某行的各字段在Row Data中的offset。
 
@@ -2433,7 +2327,7 @@ Orc (Optimized Row Columnar)是Hive 0.11版里引入的新的存储格式。
 
 每个文件有一个File Footer，这里面存的是每个Stripe的行数，每个Column的数据类型信息等；每个文件的尾部是一个PostScript，这里面记录了整个文件的压缩类型以及FileFooter的长度信息等。在读取文件时，会seek到文件尾部读PostScript，从里面解析到File Footer长度，再读FileFooter，从里面解析到各个Stripe信息，再读各个Stripe，即从后往前读。
 
-### **8.5.4 Parquet格式**
+##### **Parquet格式**
 
 Parquet文件是以二进制方式存储的，所以是不可以直接读取的，文件中包括该文件的数据和元数据，因此Parquet格式文件是自解析的。
 
@@ -2445,21 +2339,15 @@ Parquet文件是以二进制方式存储的，所以是不可以直接读取的�
 
 通常情况下，在存储Parquet数据的时候会按照Block大小设置行组的大小，由于一般情况下每一个Mapper任务处理数据的最小单位是一个Block，这样可以把每一个行组由一个Mapper任务处理，增大任务执行并行度。Parquet文件的格式如图6-12所示。
 
-![img](file:///C:\Users\wangyg\AppData\Local\Temp\ksohtml\wpsF427.tmp.jpg) 
 
-图6-12  Parquet格式
 
 上图展示了一个Parquet文件的内容，一个文件中可以存储多个行组，文件的首位都是该文件的Magic Code，用于校验它是否是一个Parquet文件，Footer length记录了文件元数据的大小，通过该值和文件长度可以计算出元数据的偏移量，文件的元数据中包括每一个行组的元数据信息和该文件存储数据的Schema信息。除了文件中每一个行组的元数据，每一页的开始都会存储该页的元数据，在Parquet中，有三种类型的页：数据页、字典页和索引页。数据页用于存储当前行组中该列的值，字典页存储该列值的编码字典，每一个列块中最多包含一个字典页，索引页用来存储当前行组下该列的索引，目前Parquet中还不支持索引页。
 
-### **8.5.5 主流文件存储格式对比实验**
+##### **主流文件存储格式对比实验**
 
 从存储文件的压缩比和查询速度两个角度对比。
 
 **存储文件的压缩比测试：**
-
-\1. 测试数据
-
-![img](file:///C:\Users\wangyg\AppData\Local\Temp\ksohtml\wpsF437.tmp.png)
 
 2．TextFile
 
@@ -2559,9 +2447,9 @@ Time taken: 18.384 seconds, Fetched: 1 row(s)
 
 存储文件的查询速度总结：查询速度相近。
 
-## **8.6 存储和压缩结合**
+#### **存储和压缩结合**
 
-### **8.6.1** **修改****H****adoop集群****具有Snappy压缩方式**
+##### **修改Hadoop集群具有Snappy压缩方式**
 
 1．查看hadoop checknative命令使用
 
@@ -2643,13 +2531,11 @@ bzip2:   false
 
 9．重新启动hadoop集群和hive
 
-### **8.6.2** **测试****存储和压缩**
+##### **测试存储和压缩**
 
 官网：<https://cwiki.apache.org/confluence/display/Hive/LanguageManual+ORC>
 
 ORC存储方式的压缩：
-
-表6-12
 
 | Key                      | Default     | Notes                                                        |
 | ------------------------ | ----------- | ------------------------------------------------------------ |
@@ -2705,9 +2591,9 @@ hive (default)> dfs -du -h /user/hive/warehouse/log_orc_snappy/ ;
 
 在实际的项目开发当中，hive表的数据存储格式一般选择：orc或parquet。压缩方式一般选择snappy，lzo。
 
-# **第9章** **企业级调优**
+### **企业级调优**
 
-## **9.1 Fetch抓取**
+#### **Fetch抓取**
 
 Fetch抓取是指，Hive中对某些情况的查询可以不必使用MapReduce计算。例如：SELECT * FROM employees;在这种情况下，Hive可以简单地读取employee对应的存储目录下的文件，然后输出查询结果到控制台。
 
@@ -2737,7 +2623,7 @@ hive (default)> select ename from emp;
 
 hive (default)> select ename from emp limit 3;
 
-## **9.2 本地模式**
+## **本地模式**
 
 大多数的Hadoop Job是需要Hadoop提供的完整的可扩展性来处理大数据集的。不过，有时Hive的输入数据量是非常小的。在这种情况下，为查询触发执行任务消耗的时间可能会比实际job的执行时间要多的多。对于大多数这种情况，Hive可以通过本地模式在单台机器上处理所有的任务。对于小数据集，执行时间可以明显被缩短。
 
@@ -2763,9 +2649,9 @@ hive (default)> select * from emp cluster by deptno;
 
 Time taken: 20.09 seconds, Fetched: 14 row(s)
 
-## **9.3 表的优化**
+## **表的优化**
 
-### **9.3.1 小表、大表Join**
+### **小表、大表Join**
 
 将key相对分散，并且数据量小的表放在join的左边，这样可以有效减少内存溢出错误发生的几率；再进一步，可以使用map join让小的维度表（1000条以下的记录条数）先进内存。在map端完成reduce。
 
@@ -2823,7 +2709,7 @@ Time taken: 34.196 seconds
 
 No rows affected (26.287 seconds)
 
-### **9.3.2 大表Join大表**
+### **大表Join大表**
 
 1．空KEY过滤
 
@@ -2891,11 +2777,9 @@ insert overwrite table jointable
 
 select n.* from nullidtable n left join ori b on n.id = b.id;
 
-**结果：****如图6-13所示，****可以看出来，出现了数据倾斜，某些reducer的资源消耗远大于其他reducer。**
+**结果：****如图6-13所示，****可以看出来，出现了数据倾斜，某些reducer的资源消耗远大于其他reducer。 
 
-![img](file:///C:\Users\wangyg\AppData\Local\Temp\ksohtml\wpsF458.tmp.jpg) 
 
-图6-13 空key转换
 
 随机分布空null值
 
@@ -2911,11 +2795,7 @@ select n.* from nullidtable n full join ori o on
 
 case when n.id is null then concat('hive', rand()) else n.id end = o.id;
 
-**结果：****如图6-14所示，****可以看出来，消除了数据倾斜，负载均衡reducer的资源消耗**
-
-![img](file:///C:\Users\wangyg\AppData\Local\Temp\ksohtml\wpsF468.tmp.jpg) 
-
-图6-14 随机分布空值
+结果：如图6-14所示，可以看出来，消除了数据倾斜，负载均衡reducer的资源消耗 
 
 ### **MapJoin（小表join大表）**
 
@@ -2933,7 +2813,7 @@ set hive.mapjoin.smalltable.filesize=25000000;
 
 2．MapJoin工作机制，如图6-15所示
 
-![img](file:///C:\Users\wangyg\AppData\Local\Temp\ksohtml\wpsF489.tmp.png)图6-15  MapJoin工作机制
+图6-15  MapJoin工作机制
 
 **案例实操：** 
 
@@ -2957,7 +2837,7 @@ Time taken: 24.315 seconds
 
 默认情况下，Map阶段同一Key数据分发给一个reduce，当一个key数据过大时就倾斜了。
 
-![img](file:///C:\Users\wangyg\AppData\Local\Temp\ksohtml\wpsF499.tmp.jpg) 
+
 
 ​    并不是所有的聚合操作都需要在Reduce端完成，很多聚合操作都可以先在Map端进行部分聚合，最后在Reduce端得出最终结果。
 
@@ -3404,271 +3284,6 @@ hive (default)> explain extended select deptno, avg(sal) avg_sal from emp group 
 
 
 
-# **Hive实战之影音**
-
-## **需求描述**
-
-统计视频网站的常规指标，各种TopN指标：
-
---统计视频观看数Top10
-
---统计视频类别热度Top10
-
---统计视频观看数Top20所属类别
-
---统计视频观看数Top50所关联视频的所属类别Rank
-
---统计每个类别中的视频热度Top10
-
---统计每个类别中视频流量Top10
-
---统计上传视频最多的用户Top10以及他们上传的视频
-
---统计每个类别视频观看数Top10
-
-## **项目**
-
-###  数据结构
-
-1．视频表
-
-表6-13 视频表
-
-| 字段        | 备注       | 详细描述               |
-| ----------- | ---------- | ---------------------- |
-| video id    | 视频唯一id | 11位字符串             |
-| uploader    | 视频上传者 | 上传视频的用户名String |
-| age         | 视频年龄   | 视频在平台上的整数天   |
-| category    | 视频类别   | 上传视频指定的视频分类 |
-| length      | 视频长度   | 整形数字标识的视频长度 |
-| views       | 观看次数   | 视频被浏览的次数       |
-| rate        | 视频评分   | 满分5分                |
-| Ratings     | 流量       | 视频的流量，整型数字   |
-| conments    | 评论数     | 一个视频的整数评论数   |
-| related ids | 相关视频id | 相关视频的id，最多20个 |
-
-2．用户表
-
-表6-14 用户表
-
-| 字段     | 备注         | 字段类型 |
-| -------- | ------------ | -------- |
-| uploader | 上传者用户名 | string   |
-| videos   | 上传视频数   | int      |
-| friends  | 朋友数量     | int      |
-
-### **1****0****.2.2 ETL原始数据**
-
-通过观察原始数据形式，可以发现，视频可以有多个所属分类，每个所属分类用&符号分割，且分割的两边有空格字符，同时相关视频也是可以有多个元素，多个相关视频又用“\t”进行分割。为了分析数据时方便对存在多个子元素的数据进行操作，我们首先进行数据重组清洗操作。即：将所有的类别用“&”分割，同时去掉两边空格，多个相关视频id也使用“&”进行分割。
-
-1．ETL之ETLUtil
-
-public class ETLUtil {	public static String oriString2ETLString(String ori){		StringBuilder etlString = new StringBuilder();		String[] splits = ori.split("\t");		if(splits.length < 9) return null;		splits[3] = splits[3].replace(" ", "");		for(int i = 0; i < splits.length; i++){			if(i < 9){				if(i == splits.length - 1){					etlString.append(splits[i]);									}else{					etlString.append(splits[i] + "\t");					}			}else{				if(i == splits.length - 1){					etlString.append(splits[i]);				}else{					etlString.append(splits[i] + "&");				}			}		}				return etlString.toString();	}}
-
-2．ETL之Mapper
-
-import java.io.IOException; import org.apache.commons.lang.StringUtils;import org.apache.hadoop.io.NullWritable;import org.apache.hadoop.io.Text;import org.apache.hadoop.mapreduce.Mapper; import com.atguigu.util.ETLUtil; public class VideoETLMapper extends Mapper<Object, Text, NullWritable, Text>{	Text text = new Text();		@Override	protected void map(Object key, Text value, Context context) throws IOException, InterruptedException {		String etlString = ETLUtil.oriString2ETLString(value.toString());				if(StringUtils.isBlank(etlString)) return;				text.set(etlString);		context.write(NullWritable.get(), text);	}}
-
-3．ETL之Runner
-
-import java.io.IOException; import org.apache.hadoop.conf.Configuration;import org.apache.hadoop.fs.FileSystem;import org.apache.hadoop.fs.Path;import org.apache.hadoop.io.NullWritable;import org.apache.hadoop.io.Text;import org.apache.hadoop.mapreduce.Job;import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;import org.apache.hadoop.util.Tool;import org.apache.hadoop.util.ToolRunner; public class VideoETLRunner implements Tool {	private Configuration conf = null; 	@Override	public void setConf(Configuration conf) {		this.conf = conf;	} 	@Override	public Configuration getConf() {		return this.conf;	} 	@Override	public int run(String[] args) throws Exception {		conf = this.getConf();		conf.set("inpath", args[0]);		conf.set("outpath", args[1]); 		Job job = Job.getInstance(conf);				job.setJarByClass(VideoETLRunner.class);				job.setMapperClass(VideoETLMapper.class);		job.setMapOutputKeyClass(NullWritable.class);		job.setMapOutputValueClass(Text.class);		job.setNumReduceTasks(0);				this.initJobInputPath(job);		this.initJobOutputPath(job);				return job.waitForCompletion(true) ? 0 : 1;	} 	private void initJobOutputPath(Job job) throws IOException {		Configuration conf = job.getConfiguration();		String outPathString = conf.get("outpath");				FileSystem fs = FileSystem.get(conf);				Path outPath = new Path(outPathString);		if(fs.exists(outPath)){			fs.delete(outPath, true);		}				FileOutputFormat.setOutputPath(job, outPath);			} 	private void initJobInputPath(Job job) throws IOException {		Configuration conf = job.getConfiguration();		String inPathString = conf.get("inpath");				FileSystem fs = FileSystem.get(conf);				Path inPath = new Path(inPathString);		if(fs.exists(inPath)){			FileInputFormat.addInputPath(job, inPath);		}else{			throw new RuntimeException("HDFS中该文件目录不存在：" + inPathString);		}	} 	public static void main(String[] args) {		try {			int resultCode = ToolRunner.run(new VideoETLRunner(), args);			if(resultCode == 0){				System.out.println("Success!");			}else{				System.out.println("Fail!");			}			System.exit(resultCode);		} catch (Exception e) {			e.printStackTrace();			System.exit(1);		}	}}
-
-4．执行ETL
-
-$ bin/yarn jar ~/softwares/jars/gulivideo-0.0.1-SNAPSHOT.jar \com.atguigu.etl.ETLVideosRunner \/gulivideo/video/2008/0222 \/gulivideo/output/video/2008/0222
-
- 
-
-## **1****0****.3 准备工作**
-
-### **1****0****.3.1 创建表**
-
-创建表：gulivideo_ori，gulivideo_user_ori，
-
-创建表：gulivideo_orc，gulivideo_user_orc
-
-gulivideo_ori：
-
-create table gulivideo_ori(    videoId string,     uploader string,     age int,     category array<string>,     length int,     views int,     rate float,     ratings int,     comments int,    relatedId array<string>)row format delimited fields terminated by "\t"collection items terminated by "&"stored as textfile;
-
-gulivideo_user_ori：
-
-create table gulivideo_user_ori(    uploader string,    videos int,    friends int)row format delimited fields terminated by "\t" stored as textfile;
-
- 
-
-然后把原始数据插入到orc表中
-
-gulivideo_orc：
-
-create table gulivideo_orc(    videoId string,     uploader string,     age int,     category array<string>,     length int,     views int,     rate float,     ratings int,     comments int,    relatedId array<string>)row format delimited fields terminated by "\t" collection items terminated by "&" stored as orc;
-
-gulivideo_user_orc：
-
-create table gulivideo_user_orc(    uploader string,    videos int,    friends int)row format delimited fields terminated by "\t" stored as orc;
-
-### **1****0****.3.2 导入ETL后的数据**
-
-gulivideo_ori：
-
-load data inpath "/gulivideo/output/video/2008/0222" into table gulivideo_ori;
-
-gulivideo_user_ori：
-
-load data inpath "/gulivideo/user/2008/0903" into table gulivideo_user_ori;
-
-### **1****0****.3.3 向ORC表插入数据**
-
-gulivideo_orc：
-
-insert into table gulivideo_orc select * from gulivideo_ori;
-
- 
-
-gulivideo_user_orc：
-
-insert into table gulivideo_user_orc select * from gulivideo_user_ori;
-
-## **1****0****.4 业务分析**
-
-### **1****0****.4.1 统计视频观看数Top10**
-
-思路：使用order by按照views字段做一个全局排序即可，同时我们设置只显示前10条。
-
-最终代码：
-
-select     videoId,     uploader,     age,     category,     length,     views,     rate,     ratings,     comments from     gulivideo_orc order by     views desc limit     10;
-
-### **1****0****.4.2 统计视频类别热度Top10**
-
-思路：
-
-1) 即统计每个类别有多少个视频，显示出包含视频最多的前10个类别。
-
-2) 我们需要按照类别group by聚合，然后count组内的videoId个数即可。
-
-3) 因为当前表结构为：一个视频对应一个或多个类别。所以如果要group by类别，需要先将类别进行列转行(展开)，然后再进行count即可。
-
-4) 最后按照热度排序，显示前10条。
-
-最终代码：
-
-select     category_name as category,     count(t1.videoId) as hot from (    select         videoId,        category_name     from         gulivideo_orc lateral view explode(category) t_catetory as category_name) t1 group by     t1.category_name order by     hot desc limit     10;
-
-### **1****0****.4.3 统计出视频观看数最高的20个视频的所属类别以及类别包含Top20视频的个数**
-
-思路：
-
-1) 先找到观看数最高的20个视频所属条目的所有信息，降序排列
-
-2) 把这20条信息中的category分裂出来(列转行)
-
-3) 最后查询视频分类名称和该分类下有多少个Top20的视频
-
-最终代码：
-
-select     category_name as category,     count(t2.videoId) as hot_with_views from (    select         videoId,         category_name     from (        select             *         from             gulivideo_orc         order by             views         desc limit             20) t1 lateral view explode(category) t_catetory as category_name) t2 group by     category_name order by     hot_with_views desc;
-
-### **1****0****.4.4 统计视频观看数Top50所关联视频的所属类别排序**
-
-思路：
-
-1) 查询出观看数最多的前50个视频的所有信息(当然包含了每个视频对应的关联视频)，记为临时表t1
-
-t1：观看数前50的视频
-
-select     * from     gulivideo_orc order by     views desc limit     50;
-
-2) 将找到的50条视频信息的相关视频relatedId列转行，记为临时表t2
-
-t2：将相关视频的id进行列转行操作
-
-select     explode(relatedId) as videoId from 	t1;
-
-3) 将相关视频的id和gulivideo_orc表进行inner join操作
-
-t5：得到两列数据，一列是category，一列是之前查询出来的相关视频id
-
- (select     distinct(t2.videoId),     t3.category from     t2inner join     gulivideo_orc t3 on t2.videoId = t3.videoId) t4 lateral view explode(category) t_catetory as category_name;
-
-4) 按照视频类别进行分组，统计每组视频个数，然后排行
-
-最终代码：
-
-select     category_name as category,     count(t5.videoId) as hot from (    select         videoId,         category_name     from (        select             distinct(t2.videoId),             t3.category         from (            select                 explode(relatedId) as videoId             from (                select                     *                 from                     gulivideo_orc                 order by                     views                 desc limit                     50) t1) t2         inner join             gulivideo_orc t3 on t2.videoId = t3.videoId) t4 lateral view explode(category) t_catetory as category_name) t5group by     category_name order by     hot desc;
-
- 
-
-### **1****0****.4.5 统计每个类别中的视频热度Top10，以Music为例**
-
-思路：
-
-1) 要想统计Music类别中的视频热度Top10，需要先找到Music类别，那么就需要将category展开，所以可以创建一张表用于存放categoryId展开的数据。
-
-2) 向category展开的表中插入数据。
-
-3) 统计对应类别（Music）中的视频热度。
-
-最终代码：
-
-创建表类别表：
-
-create table gulivideo_category(    videoId string,     uploader string,     age int,     categoryId string,     length int,     views int,     rate float,     ratings int,     comments int,     relatedId array<string>)row format delimited fields terminated by "\t" collection items terminated by "&" stored as orc;
-
-向类别表中插入数据：
-
-insert into table gulivideo_category      select         videoId,        uploader,        age,        categoryId,        length,        views,        rate,        ratings,        comments,        relatedId     from         gulivideo_orc lateral view explode(category) catetory as categoryId;
-
- 
-
-统计Music类别的Top10（也可以统计其他）
-
-select     videoId,     viewsfrom     gulivideo_category where     categoryId = "Music" order by     views desc limit    10;
-
-### **1****0****.4.6 统计每个类别中视频流量Top10，以Music为例**
-
-思路：
-
-1) 创建视频类别展开表（categoryId列转行后的表）
-
-2) 按照ratings排序即可
-
-最终代码：
-
-select     videoId,    views,    ratings from     gulivideo_category where     categoryId = "Music" order by     ratings desc limit     10;
-
- 
-
-### **1****0****.4.7 统计上传视频最多的用户Top10以及他们上传的观看次数在前20的视频**
-
-思路：
-
-1) 先找到上传视频最多的10个用户的用户信息
-
-select     * from     gulivideo_user_orc order by     videos desc limit     10;
-
- 
-
-2) 通过uploader字段与gulivideo_orc表进行join，得到的信息按照views观看次数进行排序即可。
-
-最终代码：
-
-select     t2.videoId,     t2.views,    t2.ratings,    t1.videos,    t1.friends from (    select         *     from         gulivideo_user_orc     order by         videos desc     limit         10) t1 join     gulivideo_orc t2on     t1.uploader = t2.uploader order by     views desc limit     20;
-
-### 统计每个类别视频观看数Top10
-
-思路：
-
-1) 先得到categoryId展开的表数据
-
-2) 子查询按照categoryId进行分区，然后分区内排序，并生成递增数字，该递增数字这一列起名为rank列
-
-3) 通过子查询产生的临时表，查询rank值小于等于10的数据行即可。
-
-最终代码：
-
-select     t1.* from (    select         videoId,        categoryId,        views,        row_number() over(partition by categoryId order by views desc) rank from gulivideo_category) t1 where     rank <= 10;
-
 # 常见错误及解决方案
 
 1）SecureCRT 7.3出现乱码或者删除不掉数据，免安装版的SecureCRT 卸载或者用虚拟机直接操作或者换安装版的SecureCRT 
@@ -3733,3 +3348,86 @@ hive (default)> set hive.input.format=org.apache.hadoop.hive.ql.io.HiveInputForm
 ```
 
 本地模式大表和小表大表大表mapjoingroup by 动态分区调整分桶和分区并行执行JVM重用
+
+
+
+
+
+## hql练习记录
+
+```
+#创建数据库
+#if not exists，如果存在不创建，防止出现问题
+create database if not exists hive_db2 
+comment "first db"
+location "/hive_db2" 
+with dbproperties("createtime"="2018-12-18");
+
+#查看数据库详细信息--扩展信息
+desc database extended hive_db2;
+
+#查看数据库
+show databases;
+#采用模糊查询的方式进行
+show databases like 'hive*';
+
+#修改数据库--只能修改属性
+alter database hive_db2 set dbproperties("createtime"="2019-2-16");
+```
+
+
+
+
+
+## 不熟部分
+
+> 显示数据库的详细信息
+>
+> desc database extended 数据库名
+>
+> 显示表的详细信息
+>
+> descextended/formatted 表名
+
+
+
+> 创建并插入数据
+>
+> create table student2
+>
+> as select * from student
+
+> 创建表时复制某张表的结构方式创建
+>
+> create table if not exists student4 like student
+
+> 外部表适合做数据分析--只会删除metastore中元数据
+>
+> 一般和location结合使用， location只能指定到路径，location的路径是表在HDFS上的路径，表在HDFS上的表现形式是文件夹
+
+
+
+> 判断表中能否查到数据条件：
+>
+> 1. 有没有元数据2 HDFS中有没有数据3.两者是否做了关联
+
+
+
+> 外部表和内部表转化：
+>
+> alter table student(表名) set tblproperties('EXTERNAL'='FALSE');
+
+
+
+> 分区表：
+>
+> 好处：可以提高效率
+>
+> partitioned by (month string) //分区字段不能是表中的字段，是一个路径
+>
+> 分区表load数据
+> load data local inpath '/opt/module/datas/student.txt' into table stu_par 
+>
+> partition(month='12'_
+>
+> 显示分区表的分区： show partitions stu_par

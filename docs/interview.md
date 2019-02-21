@@ -269,3 +269,127 @@ HDFS采用master/slave架构，一个HDFS集群由一个namenode和一定的data
 6. 生成新的镜像文件Fsimage.chkpoint
 7. 拷贝Fsimage.chkpoint到NamNode
 8. NamNode将fsimage.chkpoint重新命名成fsimage
+
+
+
+
+
+## 基础算法相关
+
+##### 快速排序
+
+```
+ @Test
+    public void test(){
+        int[] arr = {9, -16, 21, 23, -30, -49, 21, 30, 30};
+        //int[] arr = {9, -16, 21};
+        quickSort(arr,0,arr.length-1);
+        for (int i : arr) {
+            System.out.print(i+" ");
+        }
+    }
+    private void quickSort(int[] arr, int left, int right) {
+        if(left>=right){
+            return;
+        }
+        int single = SingleSort(arr, left, right);
+        quickSort(arr, left, single-1);
+        quickSort(arr, single+1, right);
+    }
+    private int SingleSort(int[] arr, int left, int right) {
+        int key = arr[right];
+        while(left<right){
+            while(left<right && arr[left]<= key){
+                left++;
+            }
+            arr[right] = arr[left];
+            while(left<right && arr[right] >= key){
+                right--;
+            }
+            arr[left] = arr[right];
+        }
+        arr[left] = key;
+        return left; // 返回下标
+    }
+```
+
+##### 归并排序
+
+```java
+   @Test
+    public void test() {
+        int[] arr = {9, -16, 21, 23, -30, -49, 21, 30, 30};
+//        int[] arr = {9, -16, 21};
+        int[] tmp = new int[arr.length];
+        mergeSort(arr, 0, arr.length - 1, tmp);
+        for (int i : arr) {
+            System.out.print(i + " ");
+        }
+    }
+
+    private void mergeSort(int[] arr, int left, int right, int[] tmp) {
+        if(left<right){
+            //必须left<right
+            int mid = (left+right)/2;
+            mergeSort(arr, left, mid, tmp);
+            mergeSort(arr, mid+1, right, tmp);
+
+            //合并
+            merge(arr,left,mid,right,tmp);
+        }
+    }
+
+    private void merge(int[] arr, int left, int mid, int right, int[] tmp) {
+        int l = left;
+        int r = mid+1;
+        int t=0;// 下标
+        while(l<=mid && r<=right){
+            if(arr[l] <arr[r]){
+                tmp[t++]=arr[l++];
+            }else{
+                tmp[t++] = arr[r++];
+            }
+        }
+        while(l<=mid){
+            tmp[t++]=arr[l++];
+        }
+        while(r<=right){
+            tmp[t++] = arr[r++];
+        }
+        //将tmp中数据拷贝到arr中
+        t=0;//重置
+        int tmpLeft=left;
+        while(tmpLeft<=right){
+            arr[tmpLeft++] = tmp[t++];
+        }
+
+    }
+```
+
+
+
+##### 手写Spark-WordCount--六种方式
+
+```scala
+1. sc.textFile("/2.txt").flatMap(_.split(" ")).map((_,1)).reduceByKey(_+_).collect
+2.	 sc.makeRDD(Array("one", "two", "two", "three","three","three")).map((_,1)).groupByKey.map(x=>(x._1,x._2.sum)).collect
+3.  sc.textFile("/2.txt").flatMap(_.split(" ")).map((_,1)).aggregateByKey(0)(_+_,_+_).collect
+4. sc.textFile("/2.txt").flatMap(_.split(" ")).map((_,1)).foldByKey(0)(_+_).collect
+5. sc.makeRDD(Array("one", "two", "two", "three","three","three")).map((_,1)).combineByKey(x=>x,(x:Int,v)=>(x+v),(x:Int,y:Int)=>(x+y)).collect
+6. rdd.groupBy(x=>x).map(t=>(t._1, t._2.toList.length)).collect
+```
+
+
+
+
+
+## Scala/Spark
+
+创建一个RDD，使其一个分区的数据转变为一个String。例如(Array("a","b","c","d"),2)=>("ab","cd")
+
+```scala
+sc.parallelize(Array("a","b","c","d"),2).glom.map(x=>x.reduce(_ + _)).map(x=>x).collect
+```
+
+
+

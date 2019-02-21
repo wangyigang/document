@@ -537,6 +537,160 @@ class Person private (pName: String, pAge:Int){
 5. 使用本类的辅助构造器继续初始化
 6. 将对象在内存中的地址复制给p
 
+#### 包package
+
+##### 包的引入
+
+
+
+#### 面向对象编程（高级部分)
+
+###### 静态
+
+scala中静态的概念通过半生对象体现,scala中并没有静态的概念，但是为了能和java语言交互，产生了一个特殊的对象来模拟类对象，成为半生对象，类的所有静态内容都可以放置在半生对象中声明和调用
+
+###### 说明
+
+1. 当在同一个文件中，有class Person和object Person(两个名字相同)
+
+2. class Person称为伴生类，将非静态的内容写到该类中
+3. object Person称为伴生对象，将静态的内容写到该类中
+4. class Person编译后生成Person类， Person.class
+5. object Person编译后生成Person$类， Person$.class
+6. 伴生对象中的属性或方法可以直接使用 对象名.属性/方法(底层调用时，直接调用伴生类生成的静态$类)
+
+
+
+```
+//需求：统计共有多少小孩玩游戏？
+object ChildGame {
+  def main(args: Array[String]): Unit = {
+    val child1 = new Child("蜘蛛精")
+    val child2 = new Child("老鼠精")
+    val child3 = new Child("黄鼠狼精")
+    Child.joinGame(child1) //Child$.MODULE$
+    Child.joinGame(child2)
+    Child.joinGame(child3)
+
+    Child.showInfo()
+  }
+}
+
+//小孩类
+class Child(cName:String) {
+  var name :String = cName
+}
+
+object Child {
+  var totalNum = 0
+  def joinGame(child:Child): Unit = {
+    println(child.name + " 加入游戏..")
+    totalNum += 1
+  }
+  def showInfo(): Unit = {
+    printf("当前有%d个小孩玩游戏\n" , totalNum)
+  }
+}
+```
+
+##### apply
+
+作用：在伴生对象中定义apply方法，可以实现：类名(参数)方式创建对象实例
+
+##### 接口
+
+###### 介绍：
+
+​	从面相对象来看，接口并不属于面相对象的范畴，Scala是纯面相对象的语言，scala中，没有接口， 而是采用trait(特质，特征)来代替接口的概念，trait 等价于 接口+抽象类
+
+> 动态混入，继承
+
+```scala
+trait 特质名{
+    trait body
+} //trait 命名，一般首字母大写,java中的接口可以当做特质使用
+```
+
+###### trait的使用
+
+```
+class 类名 extends 父类 with 特质1, with 特质2 with 特质3
+```
+
+1. 特质可以同时拥有抽象方法和具体方法，一个类可以继承多个特质
+
+```scala
+object TraitTest {
+  def main(args: Array[String]): Unit = {
+    val sheep = new Sheep
+    sheep.sayhi()
+    sheep.sayHello()
+  }
+}
+//当一个trait有抽象方法和非抽象方法时，一个trait底层对应两个:SayHello.class 和SayHello$.class
+trait SayHello{
+  //抽象方法
+  def sayhi()
+  //具体方法
+  def sayHello(): Unit ={
+    println("hello...")
+  }
+}
+class  Sheep extends  SayHello{
+  override def sayhi(): Unit = {
+    println("sheep say hi...")
+  }
+}
+```
+
+
+
+##### 动态混入
+
+​	除了可以在类声明时集成特质以外，还可以在构建对象时混入特质，扩展目标类的功能,动态混入是scala特有的方式，可以在不修改类声明/定义的情况下，扩展类的功能，灵活性强，耦合性低
+
+
+
+```scala
+ object MixInDemo {
+  def main(args: Array[String]): Unit = {
+    //创建OracleDB 实例，同时动态混入Operate3特质
+    //就可以使用特质的方法,理解解耦接入.
+    val oracleDB = new OracleDB with Operate3
+    oracleDB.insert(100)
+}
+
+//特质
+trait Operate3 {
+  def insert(id: Int): Unit = {
+    println("插入数据 = " + id)
+  }
+}
+//普通类
+class OracleDB {
+}
+```
+
+###### 叠加特质注意事项
+
+> 构建对象的同时如果混入多个特质，成为叠加特质，特质声明顺序从左到右，方法执行顺序从右到左
+
+1) 特质声明顺序从左到右。
+
+2) Scala在执行叠加对象的方法时，会首先从后面的特质(从右向左)开始执行
+
+3) Scala中特质中如果调用super，并不是表示调用父特质的方法，而是向前面（左边）继续查找特质，如果找不到，才会去父特质查找
+
+4) 如果想要**调用具体特质的方法**，可以指定：**super[****特质****].xxx(…).**其中的泛型必须是**该特质的直接超类**类型
+
+
+
+
+
+
+
+
+
 
 
 ### 数据结构上
@@ -713,8 +867,6 @@ Array.ofDim[Double](3,4)
      ![1548320595759](assets/1548320595759.png)
 
 ##### 元祖（tuple）
-
-	##### 定义
 
 > 将多个无关的数据封装成一个整体，成为元祖，元素最大的特点灵活，对数据没有过多的约束
 
@@ -926,7 +1078,7 @@ TODO--Set
 
 
 
-## 数据结构下-集合应用操作
+### 数据结构下-集合应用操作
 
 ##### 集合元素的映射-map映射操作
 
@@ -1031,6 +1183,209 @@ object ReduceLeftTest {
 
 
 ##### 综合案例：WordCount
+
+### 模式匹配
+
+```
+match关键字声明，每个分支使用case关键字，case_分支类似java default //如果所有场景不匹配，又没有写case_ ，会抛出异常
+```
+
+###### 守卫
+
+如果想要匹配某个范围的数据，需要模式匹配中增加条件守卫
+
+> object MatchTest {
+>   def main(args: Array[String]): Unit = {
+>     for (ch <- "+-3!") {
+>       var sign = 0
+>       var digit = 0
+>       ch match {
+>         case '+' => sign = 1
+>         case '-' => sign = -1
+>        ==case _ if ch.toString.equals("3") => digit = 3==
+>         case _ => sign = 2
+>       }
+>       println(ch + " " + sign + " " + digit)
+>     }
+>   }
+> }
+
+###### 模式中变量
+
+如果case关键字后跟变量名，match 前表达式的值会赋值这个变量
+
+###### 类型匹配
+
+可以匹配对象的任意类型，可以避免使用isInstanceOf和 asInstanceOf方法
+
+```scala
+ //类型匹配
+  def test3(): Unit = {
+    val a = 3
+    val obj = if (a == 1) 1
+    else if (a == 2) "2"
+    else if (a == 3) BigInt(3)
+    else if (a == 4) Map("aa" -> 1)
+    else if (a == 5) Map(1 -> "aa")
+    else if (a == 6) Array(1, 2, 3)
+    else if (a == 7) Array("aa", 1) //Array[Any]
+    else if (a == 8) Array("aa")
+
+    //说明
+    //1. 下面的方式是进行类型匹配
+    //2. 这种按照类型匹配的应用场景，通常在网络并发的使用.
+    //3. 执行流程  case a : Int => a
+    //3.1 a = result
+    //3.2 判断 a 的类型是不是 Int, 如果是就匹配成功，否则匹配失败.
+
+    val result = obj match {
+      case _: BigInt => Int.MaxValue //这里表示忽略匹配的变量值
+      case a: Int => a
+      case b: Map[String, Int] => "对象是一个字符串-数字的Map集合"
+      case c: Map[Int, String] => "对象是一个数字-字符串的Map集合"
+      case d: Array[String] => {
+        println(d.mkString(" "))
+        "对象是一个字符串数组"
+      }
+      case e: Array[Int] => "对象是一个数字数组"
+      case f: BigInt => Int.MaxValue
+      case _ => "啥也不是"
+    }
+    println(result)
+  }
+```
+
+注意事项：
+
+1. Map[String,Int] 和Map[Int,String] 底层会进行类型擦除,List也会，所以都会匹配Map
+
+2. 如果代码中不可能出现的类型匹配，会报出编译错误
+
+###### 匹配数组
+
+```
+  //匹配数组
+  def test4(): Unit ={
+    for (arr <- Array(Array(0), Array(1, 0), Array(0, 1, 0),
+      Array(1, 1, 0), Array(1, 1, 0, 1))) {
+      val result = arr match {
+        case Array(0) => "0" //匹配只有0的数组
+        case Array(x, y) => ArrayBuffer(y,x) //x + "=" + y //匹配有两个元素的数组
+        case Array(0, _*) => "以0开头和数组"
+        case _ => "什么集合都不是"
+      }
+      println("result = " + result)
+    }
+  }
+```
+
+###### 匹配列表
+
+```scala
+def test5(): Unit = {
+    for (list <- Array(List(0), List(1, 0), List(88), List(0, 0, 0), List(1, 0, 0))) {
+      val result = list match {
+        case 0 :: Nil => "0" // 匹配的 List(0)
+        case x :: y :: Nil => x + " " + y // 匹配的是有两个元素的List(x,y)
+        case 0 :: tail => "0 ..." // 匹配 以0 开头的后面有任意元素的List
+        case x :: Nil => List(x)
+        case _ => "something else"
+
+      }
+//      0
+//      1 0
+//      List(88)
+//      0 ...
+//      something else
+      println(result)
+    }
+  }
+```
+
+###### 匹配元祖
+
+```
+ //匹配元祖
+  def test6(): Unit = {
+    //请返回 (34, 89) => (89,34)
+    for (pair <- Array((0, 1), (34, 89), (1, 0), (1, 1), (1, 0, 2))) {
+      val result = pair match { //
+        case (0, _) => "0 ..." // 表示匹配 0 开头的二元组
+        case (y, 0) => y //表示匹配 0 结尾的二元组
+        case (x, y) => (y, x)
+        case _ => "other" //.默认
+      }
+      println(result)
+    }
+  }
+```
+
+###### 对象匹配
+
+规则：case中对象的unapply方法(对象提取器) 返回Some集合认为提取成功
+
+​	返回None集合则匹配失败
+
+
+
+
+
+
+
+### 函数式编程高级
+
+##### 类型推断:主要起到简写的作用
+
+当类型可以被推断时，可以省略类型
+
+当传入的函数，只有单个参数时，可以省去括号
+
+如果变量只在=>右边只出现一次，可以用_代替
+
+
+
+
+
+##### 函数柯里化
+
+> 函数编程中，多个参数的函数可以转化为接收单个参数的函数,转化过程叫做柯里化(柯里化是以函数为主题思想的必然产生结果)
+
+```scala
+object CurliTest {
+  def main(args: Array[String]): Unit = {
+//    println(mul(10)(2))
+
+    var str1 ="hello"
+    //隐式转换中的函数需要两个参数，第一个参数时string,第二个参数时一个函数,返回一个boolean
+    println(str1.checkEq("HELLO")(eqStr))
+    println(str1.checkEq("HELLO")(_.equals(_))) //true
+  }
+
+  def mul(x:Int)(y:Int)=x*y
+
+  //函数柯里化，一个参数起到一个作用
+  //方式一
+  def eqStr(str:String,str2:String): Boolean={
+    str.equals(str2)
+  }
+
+  //隐式类--string->string，可以使用checkEq方法
+  implicit class TestEq(s: String) {
+    //这里体现
+    def checkEq(ss: String)(f: (String, String) => Boolean): Boolean = {
+      f(s.toLowerCase, ss.toLowerCase)
+    }
+  }
+}
+```
+
+
+
+
+
+
+
+
 
 
 
@@ -3323,25 +3678,770 @@ class HashTab(val size: Int) { //size 会称为只读属性
 }
 ```
 
+### 二叉树
 
+> 二叉树结合了数组访问快和链式存储插入和删除方便的优点
+>
+> 能提高存储，读取数据的效率，二叉搜索树既可以保证插入删除的效率，也可以保证访问，检索的速度
+
+==二叉树特点==: 对于每一个非叶子节点，左子树节点小于当前节点，右子树节点大于当前节点
+
+![1550155688667](assets/1550155688667.png)
+
+- 二叉树名词
 
 > 权：节点的值
 >
-> 叶子节点：
+> 叶子节点：没有子节点的节点
 >
 > 满二叉树: 所有的叶子节点都在最后一层，且节点个数总数=2^n -1，n为层数
 >
-> 完全二叉树：TODO
+> 完全二叉树：所有叶子节点都在倒数第一排或倒数第二排，倒数第二排没有空缺，倒数第一排从左向右连续
+
+
 
 ##### 二叉树遍历：
+
+> 前序遍历：先输出父节点，在输出左子树，再输出右子树
+>
+> 中序遍历：先输出左子树，在输出父节点，在输出右子树
+>
+> 后序遍历：先输出左子树，在输出右子树，最后输出父节点
+>
+> tips:前中后序遍历看父节点的输出顺序
+
+- code
+
+```scala
+package datastructure.BinaryTree
+
+object BinaryTreeTest {
+  def main(args: Array[String]): Unit = {
+    test01()
+  }
+
+  def test01(): Unit = {
+    //先使用比较简单方法，直接关联的方法
+    val root = new ListNode(1, "11")
+    val hero2 = new ListNode(2, "22")
+    val hero3 = new ListNode(3, "33")
+    val hero4 = new ListNode(4, "44")
+    val hero5 = new ListNode(5, "55")
+
+    root.left = hero2
+    root.right = hero3
+
+    hero3.left = hero4
+    hero3.right = hero5
+
+    val binaryTree = new BinaryTree
+    binaryTree.root = root
+    println("======前序遍历======")
+    binaryTree.prevOrder()
+    println("=======中序遍历======")
+    binaryTree.midOrder()
+    println("=======后序遍历======")
+    println("后序遍历")
+    binaryTree.postOrder()
+  }
+}
+
+
+class ListNode(listNo: Int, listName: String) {
+  var no = listNo
+  var name = listName
+  //左指针
+  var left: ListNode = null //如果初始值为null,一定要指定类型
+  var right: ListNode = null //右节点初始为null
+
+  //前序遍历
+  def prevOrder(): Unit = {
+    //前序遍历,先输出当前节点值
+    println("no:" + this.no + " name:" + this.name)
+    if (this.left != null) {
+      this.left.prevOrder()
+    }
+    if (this.right != null) {
+      this.right.prevOrder()
+    }
+  }
+
+  //中序遍历
+  def midOrder(): Unit = {
+    //中序,左中右
+    if (this.left != null) {
+      this.left.midOrder()
+    }
+    //中序输出
+    println("no:" + this.no + " name:" + this.name)
+    if (this.right != null) {
+      this.right.midOrder()
+    }
+  }
+
+  //后序遍历
+  def postOrder(): Unit = {
+    if (this.left != null) {
+      this.left.postOrder()
+    }
+    if (this.right != null) {
+      this.right.postOrder()
+    }
+    //后序遍历
+    println("no:" + this.no + " name:" + this.name)
+  }
+}
+
+class BinaryTree {
+  //根节点
+  var root: ListNode = null //初始为null
+
+  //后序遍历
+  def postOrder(): Unit = {
+    if (root == null) {
+      println("当前二叉树为空，不能遍历...")
+      return
+    } else {
+      root.postOrder()
+    }
+
+  }
+
+  //中序遍历
+  def midOrder(): Unit = {
+    if (root == null) {
+      println("当前二叉树为空，不能遍历...")
+      return
+    } else {
+      root.midOrder()
+    }
+  }
+
+  //前序遍历
+  def prevOrder(): Unit = {
+    if (root == null) {
+      println("当前二叉树为空，不能遍历...")
+      return
+    } else {
+      root.prevOrder()
+    }
+  }
+}
+
+```
+
+
+
+##### 二叉树查找
+
+```scala
+package datastructure.BinaryTree
+
+/**
+  * 二叉树的前中后遍历
+  * 二叉树的
+  */
+object BinaryTreeTest {
+  def main(args: Array[String]): Unit = {
+//    test01()
+    test02()
+  }
+  //二叉树的搜索
+  def test02(): Unit ={
+
+  }
+  def test01(): Unit = {
+    //先使用比较简单方法，直接关联的方法
+    val root = new ListNode(1, "11")
+    val hero2 = new ListNode(2, "22")
+    val hero3 = new ListNode(3, "33")
+    val hero4 = new ListNode(4, "44")
+    val hero5 = new ListNode(5, "55")
+
+    root.left = hero2
+    root.right = hero3
+
+    hero3.left = hero4
+    hero3.right = hero5
+
+    val binaryTree = new BinaryTree
+    binaryTree.root = root
+    println("======前序遍历======")
+    binaryTree.prevOrder()
+    println("=======中序遍历======")
+    binaryTree.midOrder()
+    println("=======后序遍历======")
+    println("后序遍历")
+    binaryTree.postOrder()
+  }
+}
+
+
+class ListNode(listNo: Int, listName: String) {
+
+
+  var no = listNo
+  var name = listName
+  //左指针
+  var left: ListNode = null //如果初始值为null,一定要指定类型
+  var right: ListNode = null //右节点初始为null
+
+  //前序遍历
+  def prevOrder(): Unit = {
+    //前序遍历,先输出当前节点值
+    println("no:" + this.no + " name:" + this.name)
+    if (this.left != null) {
+      this.left.prevOrder()
+    }
+    if (this.right != null) {
+      this.right.prevOrder()
+    }
+  }
+
+  /**
+    * 前序搜索，先搜索再左右
+    * @param no
+    * @return
+    */
+  def prevSearch(no:Int): ListNode={
+    var res:ListNode = null
+    if (no==this.no){
+      return this
+    }
+    //左
+    if (this.left!=null){
+      res = this.left.prevSearch(no)
+
+    }
+    if (res!=null){
+      return res
+    }
+    //右
+    if (this.right!=null){
+      res = this.right.prevSearch(no)
+    }
+    //直接返回res即可，不论res是否是null，直接返回
+    res
+    //    if (res!=null){
+    //      return res
+    //    }
+    //    return null
+  }
+
+  //中序遍历
+  def midOrder(): Unit = {
+    //中序,左中右
+    if (this.left != null) {
+      this.left.midOrder()
+    }
+    //中序输出
+    println("no:" + this.no + " name:" + this.name)
+    if (this.right != null) {
+      this.right.midOrder()
+    }
+  }
+
+  /**
+    * 中序搜索no
+    * @param no
+    * @return
+    */
+  def midSearch(no: Int): ListNode = {
+    var res :ListNode = null
+    if (this.left != null){
+      res = this.left.midSearch(no)
+    }
+    //中序查找
+    if (res != null){
+      return res
+    }
+    if (this.no == no){
+      return this
+    }
+    if (this.right!= null){
+      res = this.right.midSearch(no)
+    }
+    return res
+  }
+
+
+  //后序遍历
+  def postOrder(): Unit = {
+    if (this.left != null) {
+      this.left.postOrder()
+    }
+    if (this.right != null) {
+      this.right.postOrder()
+    }
+    //后序遍历
+    println("no:" + this.no + " name:" + this.name)
+  }
+  
+  //后序查找
+  def postSearch(no: Int): ListNode = {
+    var res:ListNode= null
+    //左
+    if (this.left!= null){
+      res = this.left.prevSearch(no)
+    }
+    if (res != null){
+      return res
+    }
+    //右
+    if (this.right!= null){
+      res = this.right.postSearch(no)
+    }
+    if (res!= null){
+      return res
+    }
+    //根
+    if (this.no == no){
+      return this
+    }
+    return null
+  }
+}
+
+class BinaryTree {
+  //根节点
+  var root: ListNode = null //初始为null
+
+  //后序遍历
+  def postOrder(): Unit = {
+    if (root == null) {
+      println("当前二叉树为空，不能遍历...")
+      return
+    } else {
+      root.postOrder()
+    }
+  }
+  //后序查找
+  def postSearch(no:Int):ListNode={
+    if (root == null){
+       println("当前二叉树为空, 不能搜索..")
+      return null
+    }else{
+      root.postSearch(no)
+    }
+  }
+
+  //中序遍历
+  def midOrder(): Unit = {
+    if (root == null) {
+      println("当前二叉树为空，不能遍历...")
+      return
+    } else {
+      root.midOrder()
+    }
+  }
+  //中序查找
+  def midSearch(no:Int):ListNode={
+    if(root==null){
+      println("当前二叉树为空，不能搜索...")
+      return  null
+    }else{
+      root.midSearch(no)
+    }
+  }
+
+  //前序遍历
+  def prevOrder(): Unit = {
+    if (root == null) {
+      println("当前二叉树为空，不能遍历...")
+      return
+    } else {
+      root.prevOrder()
+    }
+  }
+  //前序查找
+  def preOrderSearch(no:Int): ListNode ={
+    if (root==null){
+      println("当前二叉树为空，不嫩搜索...")
+      return null
+    }else{
+      val node = root.prevSearch(no)
+      return node
+    }
+  }
+}
+
+```
 
 
 
 ##### 顺序存储二叉树
 
+> 底层存储，数组可以转换成树，树可以转换成数组
+
+
+
 ![1550132621217](assets/1550132621217.png)
 
+###### 顺序存储二叉树概念
 
+> 只考虑完全二叉树
+>
+> 第n个节点的左子节点： 2*n+1
+>
+> 第n个节点的右子节点：2*n+2
+>
+> 第n个节点的父节点 ：(n-1)/2
+>
+> n表示二叉树的第几个元素，或数组中的下标
+
+###### 代码实现
+
+```scala
+package datastructure.ArrayTree
+
+object ArrayTreeTest {
+  def main(args: Array[String]): Unit = {
+    val arr =  Array(1,2,3,4,5,6,7)
+    val arrayTree = new ArrayTree(arr)
+    //前序遍历我们的数组
+//    arrayTree.preOrder() //1,2,4,5,3,6,7
+
+//    //中序遍历
+//    arrayTree.midOrder() //4 2 5 1 6 3 7
+    //后序遍历
+    arrayTree.postOrder()  //4 5 2 6 7 3 1 
+  }
+}
+
+class ArrayTree(val arr:Array[Int]){
+
+
+
+  //前序遍历
+  def preOrder(): Unit ={
+    this.preOrder(0)
+  }
+  //前序遍历
+  def preOrder(index:Int): Unit ={
+    if (arr==null || arr.length ==0){
+      println("当前数组为空...")
+      return
+    }
+    //前序先输出
+    print(arr(index)+" ")
+    if ((index*2+1) < arr.length){
+      preOrder(index*2+1)
+    }
+    if ((index*2+2)< arr.length){
+      preOrder(index*2+2)
+    }
+  }
+  def midOrder(): Unit ={
+    midOrder(0)
+  }
+  //中序遍历
+  def midOrder(no:Int): Unit = {
+    if(arr == null || arr.length ==0){
+      println("当前数组为空，不能进行二叉树遍历...")
+      return
+    }
+    //左
+    if ((no*2+1) < arr.length){
+      midOrder(no*2+1)
+    }
+    //中
+    print(arr(no)+" ")
+    //右
+    if ((no*2+2) < arr.length){
+      midOrder(no*2+2)
+    }
+
+  }
+  //后序遍历
+  def postOrder(): Unit = {
+    postOrder(0)
+  }
+  //后序遍历
+  def postOrder(index:Int): Unit ={
+    //左
+    if ((2*index+1) < arr.length){
+      postOrder(2*index+1)
+    }
+    //右
+    if ((2*index+2) < arr.length){
+      postOrder(2*index+2)
+    }
+    //中
+    print(arr(index)+" ")
+  }
+}
+```
+
+
+
+##### 二叉排序树
+
+###### 介绍：
+
+二叉排序树：又称为BST树, 要求左边的子节点比当前节点小，右边的子节点逗比当前节点大
+
+![1550213648287](assets/1550213648287.png)
+
+###### 二叉树的创建，遍历和删除
+
+```scala
+package datastructure.BinarySortTreeTest
+
+object BinarySortTreeTest {
+  def main(args: Array[String]): Unit = {
+    test01()
+  }
+
+  def test01(): Unit = {
+    //测试一把
+    val arr = Array(7, 3, 10, 12, 5, 1, 9, 2)
+    //创建一颗二叉排序树
+    val binarySortTree = new BinarySortTree
+    for (item <- arr) {
+      binarySortTree.add(new listNode(item))
+    }
+    //遍历二叉排序树
+    binarySortTree.midOrder() // 1,3,5,7,9,10,12
+
+
+    //删除
+    binarySortTree.delNode(2)
+    binarySortTree.delNode(5)
+    binarySortTree.delNode(9)
+    binarySortTree.delNode(12)
+
+    binarySortTree.delNode(10)
+    binarySortTree.delNode(1)
+    binarySortTree.delNode(3)
+    binarySortTree.delNode(7)
+
+
+    println("\n=======删除========")
+    binarySortTree.midOrder()
+  }
+}
+
+//node节点
+class listNode(var no: Int) {
+
+  var left: listNode = null
+  var right: listNode = null
+
+
+
+  /**
+    * 找到删除节点
+    *
+    * @param no
+    * @return
+    */
+  def findDelNode(no: Int): listNode = {
+    if (this.no == no) {
+      //找到
+      return this
+    } else if (no < this.no) {
+      if (this.left == null) {
+        return null //找到左子树尽头也没有知道到
+      } else {
+        return this.left.findDelNode(no)
+      }
+    } else {
+      if (this.right == null) {
+        return null //没有找到
+      } else {
+        return this.right.findDelNode(no)
+      }
+    }
+    null
+  }
+
+  /**
+    * 找到删除节点的父节点
+    *
+    * @param no
+    * @return
+    */
+  def findDelParentNode(no: Int): listNode = {
+    //思路：判断组
+    //思路
+    //1. 先判断当前节点的左子节点或者右子节点是否是这个值
+    if ((this.left != null && this.left.no == no) ||
+      (this.right != null && this.right.no == no)) {
+      return this
+    } else {
+      if (this.left != null && no < this.no) { //说明需要向左边去递归查找
+        return this.left.findDelParentNode(no)
+      } else if (this.right != null && no > this.no) { //说明需要向右边去递归查找
+        return this.right.findDelParentNode(no)
+      } else {
+        null
+      }
+    }
+  }
+
+
+  //中序遍历
+  /**
+    * 节点的中序遍历
+    */
+  def midOrder(): Unit = {
+    //左
+    if (this.left != null) {
+      this.left.midOrder()
+    }
+    // 中
+    print(no + " ")
+    // 右
+    if (this.right != null) {
+      this.right.midOrder()
+    }
+  }
+
+  //add
+  /**
+    * 真正添加的地方
+    *
+    * @param node
+    */
+  def add(node: listNode): Unit = {
+    //左子树
+    if (this.no > node.no) { //要插入的节点比当前节点小，找左子树
+      if (this.left == null) {
+        this.left = node
+      } else {
+        this.left.add(node)
+      }
+    } else if (this.no < node.no) {
+      //右子树
+      if (this.right == null) { //到达尽头节点
+        this.right = node
+      } else {
+        this.right.add(node)
+      }
+    } else { //相等情况
+      return
+    }
+  }
+
+}
+
+
+class BinarySortTree {
+
+  var root: listNode = null
+
+  //添加
+  def add(node: listNode) = {
+    if (root == null) {
+      root = node
+    } else {
+      //不是根节点吗，进行二叉排序插入
+      root.add(node)
+    }
+  }
+
+  //遍历--中序遍历，中序遍历的输出会根据大小顺序进行输出
+  def midOrder(): Unit = {
+    if (root == null) {
+      println("当前二叉树为空,无法遍历...")
+      return
+    }
+    root.midOrder()
+  }
+
+  def delRightTreeMin(node:listNode): Int = {
+    var target = node
+    //使用while 循环找到右子树的最小值
+    while (target.left != null){
+      target = target.left
+    }
+    val minValue = target.no
+    //删除最小值对应的节点
+    delNode(minValue)
+    return minValue
+  }
+
+  /**
+    * 删除一个节点
+    * 如果想要删除节点，需要考虑三种情况
+    *  1. 删除节点为叶子节点 ：找到父节点，直接删除
+    *  2.删除节点为只有单个子节点:找到删除节点的父节点链向子节点
+    *  3.删除节点有两个子节点： 从右子树中找到最小值，然后删除最小节点，并替换最小节点的值和删除节点值
+    *
+    * @param no
+    */
+  def delNode(no: Int):Unit = {
+    if (root == null) {
+      println("当前为空，无法删除...")
+    }
+    //先看有没有要删除节点
+    var targetNode = findDelNode(no)
+    if (targetNode == null) {
+      return
+    }
+    var parentNode = FindDelParentNode(no)
+    if (parentNode == null) {
+      if (targetNode == root){
+        root =null
+      }
+      targetNode = null
+      return
+    }
+    //进行三种情况的判断
+    //第一种情况,
+    if (targetNode.left == null && targetNode.right == null) {
+      //判断删除的节点是parentNode的左子节点，还是右子节点
+      if (parentNode.left != null && parentNode.left.no == no) {
+        parentNode.left = null
+      } else {
+        parentNode.right = null
+      }
+    } else if (targetNode.left != null && targetNode.right != null) { // targetNode只有两个子节点
+      val value = delRightTreeMin(targetNode.right)
+      targetNode.no = value
+
+    } else { //只有targetNode只有一个子节点
+      //判断targetNode 是parentNode 的左子节点还是右子节点
+      if (targetNode.left != null) { //要删除的节点的左子节点不为空
+        //判断targetNode 是parentNode 的左还是右
+        if (parentNode.left.no == no) {
+          parentNode.left = targetNode.left
+        } else {
+          parentNode.right = targetNode.left
+        }
+      } else {
+        //判断targetNode 是parentNode 的左还是右
+        if (parentNode.left.no == no) {
+          parentNode.left = targetNode.right
+        } else {
+          parentNode.right = targetNode.right
+        }
+      }
+
+    }
+  }
+
+
+  //查找节点
+  def findDelNode(value: Int): listNode = {
+    if (root != null) {
+      return root.findDelNode(value)
+    } else {
+      return null
+    }
+  }
+
+  //查找父节点的方法
+  def FindDelParentNode(value: Int): listNode = {
+    if (root != null) {
+      return root.findDelParentNode(value)
+    } else {
+      return null
+    }
+  }
+}
+
+```
 
 
 
@@ -3368,5 +4468,1276 @@ scala二维数组
 
 ```
 ofDim(x,y)//TODO
+```
+
+
+
+
+
+
+
+
+
+# Spark
+
+> spark定义：Spark是一个基于内存，快速，通用，可扩展的数据搜索引擎
+
+spark内置模块 = spark core+spark SQL+spark Streaming+spark Mlib+spark GraghX+集群管理器
+
+###### Spark特点：
+
+- 快: spark是基于内存的运算
+- 易用: 支持多种语言，支持多种高级算法，可以使用户快速构建不同的应用
+- 通用: 提供了同一的解决方案
+- 兼容性:spark可以和其他框架进行融合
+
+###### 集群角色
+
+1. Master和Worker ==（Master worker只在standlone模式下）==
+   1. Master：监听Worker，对Worker进行管理,类似于Yarn的resourceManager
+   2. Worker：掌握每个节点的资源，类似于Yarn的nodemanager
+
+2. Driver和Executor
+   1.  Driver: 驱动器, 创建SparkContext，把用户程序转为任务，跟踪Executor的运行状态，为执行器节点调度任务
+   2. Executor：执行器, 运行spark应用任务，并将状态信息返回给Driver驱动器
+
+总结：==Master和Worker是Spark的守护进程，即Spark在特定模式下正常运行所必须的进程。Driver和Executor是临时进程，当有具体任务提交到Spark集群才会开启的进程。==
+
+**tips**:查看LINUX线程数TODO
+
+```
+cat /proc/cpuinfo | grep 'procesoor'  | wc -l
+```
+
+###### local本地模式
+
+> 可以在本地模式下练习和调试，local[*]表示计算机自动按照CPU最多的cores设置线程数
+
+###### spark-submit
+
+```shell
+bin/spark-submit --class <main-class> --master <master-url> --deploy-mode <deploy-mode> --conf <key>=<value>  #other options <application-jar> [application-arguments]
+```
+
+参数说明：
+
+```
+-- master: 指定master地址
+--class:指定应用的启动类
+--deploy-mode: client/cluster方式运行程序
+--conf : 任意的spark配置属性
+--executor-memory 1G 指定每个executor可用内存为1G；
+--total-executor-cores 2 指定每个executor使用的cup核数为2个。
+```
+
+```
+//更多详细内容可直接bin/spark-submit ，点击确定查看
+```
+
+###### spark-shell
+
+```shell
+bin/spark-shell
+spark-shell退出:     :quit
+```
+
+###### WordCound案例
+
+```
+sc.textFile("input").flatMap(_.split(" ")).map((_,1)).reduceByKey(_+_).collect
+```
+
+- collect延时计算方式
+
+##### Standalone模式：(完全分布式模式)
+
+> 主从架构
+
+![1550233178223](assets/1550233178223.png)
+
+流程：(client方式)
+
+1. SparkContext(driver) 向master进行注册，向资源管理者(这里是master)申请资源，然后启动Executor, Executor会向Driver进行反向注册，Driver会进行任务切分(task)，资源分配，Executor执行任务时，会向Driver报告Task状态，直至结束,任务结束后Driver进行注销
+
+
+
+###### 安装使用
+
+```
+cd spark/conf
+修改配置文件名称:
+	mv slaves.template slaves
+	mv spark-env.sh.template spark-env.sh
+修改slave文件，添加work节点: vim slaves
+	hadoop102
+	hadoop103
+	hadoop104
+修改spark-env.sh文件：
+	SPARK_MASTER_HOST=hadoop102 #设置master节点
+	SPARK_MASTER_PORT=7077 #设置主端口
+分发spark包： 设置完成后，进行分发
+启动： sbin/start-all.sh
+设置sbin/spark-config.sh 
+	export JAVA_HOME=xxx #导出java_home
+```
+
+###### 官方求PI案例：
+
+- spark-submit
+
+```
+ bin/spark-submit \
+--class org.apache.spark.examples.SparkPi \
+--master spark://hadoop102:7077 \
+--executor-memory 1G \
+--total-executor-cores 2 \
+./examples/jars/spark-examples_2.11-2.1.1.jar \
+100
+```
+
+###### 启动spark-shell
+
+```
+bin/spark-shell \
+--master spark://hadoop102:7077 \
+--executor-memory 1g \
+--total-executor-cores 2
+```
+
+###### standalone模式执行wordcount
+
+```shell
+sc.textFile("./work/input.txt").flatMap(_.split(" ")).map((_,1)).reduceByKey(_+_).collect
+//输出：res1: Array[(String, Int)] = Array((hello,2), (wortd,1), (wangyigang,1))    
+//注意点：standalone模式下，执行本地文件，需要每个节点上都有文件，否则会找不到文件
+```
+
+
+
+##### HA配置
+
+```
+vi spark-env.sh
+注释掉如下内容：
+#SPARK_MASTER_HOST=hadoop102
+#SPARK_MASTER_PORT=7077
+添加上如下内容：
+export SPARK_DAEMON_JAVA_OPTS="
+-Dspark.deploy.recoveryMode=ZOOKEEPER 
+-Dspark.deploy.zookeeper.url=hadoop102,hadoop103,hadoop104 
+-Dspark.deploy.zookeeper.dir=/spark"
+```
+
+```
+进行分发配置文件 :spark-env.sh
+启动全部节点： sbin/start-all.sh
+另一个节点上单独启动master节点： sbin/start-master.sh
+spark HA集群访问
+	bin/spark-shell \
+	--master spark://hadoop102:7077,hadoop103:7077 \
+	--executor-memory 2g \
+	--total-executor-cores 2
+```
+
+##### Yarn模式
+
+> yarn模式细分为 yarn-client模式和 yarn-cluster模式，两种模式的区别是Dirver程序的运行节点不同, yarn-client的Driver运行在客户端，yarn-cluster程序运行在RM启动的appmaster中
+
+![1550236179437](assets/1550236179437.png)
+
+流程:客户端client提交任务, RM选择一个节点启动appMaster,appMaster启动Driver(初始化sc) , AM向RM申请资源启动Executor， Executor进行反向注册,Driver进行任务切分，资源分配，Executro进行执行任务,并向Driver反馈执行状态，执行完成后，Driver进行注销
+
+> 开发环境下不会使用client模式，都会使用cluster模式,client模式的好处是执行结果可以直接打印显示出来，cluster结果在其他节点上, clutser中Driver分散在不同节点上，不同的Driver和对应的Executor进行沟通
+
+
+
+![1550487818605](assets/1550487818605.png)
+
+```
+1. spark-submit通过客户端client访问yarn
+2. 将数据提交给RM,RM会选择一个NM创建AM,启动Driver
+3. Driver对计算任务进行划分后，由AM申请资源，RM返回资源列表，
+4.Driver将数据和资源进行匹配后，利用资源启动Executor
+5. Executor启动后反向注册到Driver，建立Driver和Executor之间的关系
+6.Driver调度任务给Executor执行，Executor将任务的执行情况周期的发给Driver进行报告
+7.Executor执行完成后，通知Driver，释放资源
+```
+
+
+
+client模式：
+
+ExecutorLaucher: Executor启动器，sparkAppMaster
+
+SparkSubmit: clinet模式下和Driver在一起
+
+![1550412740727](assets/1550412740727.png)
+
+Cluster模式：
+
+​	![1550413113133](assets/1550413113133.png)
+
+
+
+###### 安装使用
+
+```shell
+1.修改hadoop配置文件yarn-site.xml
+	 <!--是否启动一个线程检查每个任务正使用的物理内存量，如果任务超出分配值，则直接将其杀掉，默认是true -->
+        <property>
+                <name>yarn.nodemanager.pmem-check-enabled</name>
+                <value>false</value>
+        </property>
+        <!--是否启动一个线程检查每个任务正使用的虚拟内存量，如果任务超出分配值，则直接将其杀掉，默认是true -->
+        <property>
+                <name>yarn.nodemanager.vmem-check-enabled</name>
+                <value>false</value>
+        </property>
+2. 修改spark-env.sh
+	YARN_CONF_DIR=/opt/module/hadoop-2.7.2/etc/hadoop
+3. 分发配置文件: 分发yarn-site.xml
+4.执行程序进行测试
+	bin/spark-submit \
+--class org.apache.spark.examples.SparkPi \
+--master yarn \
+--deploy-mode client \
+./examples/jars/spark-examples_2.11-2.1.1.jar \
+100
+
+```
+
+###### 日志查看
+
+```
+//作用：可以将spark的日志映射到yarn的日志，可以通过yarn历史日志查看spark
+1. 修改spark-defaults.conf
+	spark.yarn.historyServer.address=hadoop102:18080
+	spark.history.ui.port=18080
+2. 重启spark历史服务
+	sbin/stop-history.sh
+	sbin/start-history.sh
+3. 提交任务执行
+4. web网页查看hadoop103:8088，继续点击单条日志会跳转到spark日志中
+```
+
+
+
+
+
+![1550222430163](assets/1550222430163.png)
+
+
+
+##### IDEA编写WordCount程序，提交在集群中执行
+
+1. 创建Maven项目
+
+```xml
+<dependencies>
+    <dependency>
+        <groupId>org.apache.spark</groupId>
+        <artifactId>spark-core_2.11</artifactId>
+        <version>2.1.1</version>
+    </dependency>
+</dependencies>
+<build>
+        <finalName>WordCount</finalName>
+        <plugins>
+<plugin>
+                <groupId>net.alchim31.maven</groupId>
+<artifactId>scala-maven-plugin</artifactId>
+                <version>3.2.2</version>
+                <executions>
+                    <execution>
+                       <goals>
+                          <goal>compile</goal>
+                          <goal>testCompile</goal>
+                       </goals>
+                    </execution>
+                 </executions>
+            </plugin>
+<plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.0.0</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>WordCount</mainClass>
+                        </manifest>
+                    </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+</plugin>
+        </plugins>
+</build>
+```
+
+2. 编写代码
+
+```scala
+  def main(args: Array[String]): Unit = {
+    //创建sparkConf并设置app名称
+    var conf = new SparkConf().setAppName("WC")
+    //创建sparkcontext
+    var sc = new SparkContext(conf)
+
+    //使用sc创建RDD并执行相应的transformation和action
+    sc.textFile(args(0)).flatMap(_.split(" ")).map((_,1)).reduceByKey(_+_,1)
+      .saveAsTextFile(args(0)+"/output")
+    //关闭连接
+    sc.stop()
+  }
+```
+
+
+
+3. 打包提交到集群测试
+
+```
+bin/spark-submit \
+--class WordCount \
+--master spark://hadoop102:7077 \
+WordCount.jar \
+/word.txt \
+/out
+```
+
+```
+spark-shuffle过程落盘
+```
+
+
+
+## SparkCore
+
+##### RDD是啥
+
+> RDD(Resilient Distributed Dataset), 弹性分布式数据集,是Sparkd中最基本的数据抽象,spark计算的基石，为用户屏蔽了底层对数据的复杂抽象和处理，为用户提供了一组方便的数据转换与求值方法
+>
+> 不可变，可分区(把数据分成多个), 弹性
+
+```
+//RDD源码
+abstract class RDD[T: ClassTag](
+    @transient private var _sc: SparkContext,
+    @transient private var deps: Seq[Dependency[_]]
+  ) extends Serializable with Logging {
+
+```
+
+> 分布式指的是同一个RDD中数据存储在不同机器上
+>
+
+##### RDD编程
+
+> RDD也体现装饰者设计模式
+
+###### RDD特点
+
+```
+1. 弹性
+	存储的弹性：内存与磁盘的自动切换(如果内存不足，自动存储在磁盘)
+	容错的弹性：数据丢失可以自动恢复:数据丢失会从上游重计算(通过血统关系)
+	计算的弹性：计算出错重试机制，
+	分片的弹性： 可根据需要重新分片
+```
+
+###### RDD都做了什么
+
+```
+RDD的创建->RDD的转换->RDD的缓存->RDD的行动(action)->RDD输出
+```
+
+![1550382017876](assets/1550382017876.png)
+
+###### 三种模式下RDD分区规则
+
+> local模式：默认是CPU核数
+>
+> yarn模式：cpu*线程数
+>
+> standalone模式：cpu*线程数
+
+
+
+
+
+###### 编程模型:
+
+```
+transformations : 转换，RDD是延迟计算的，只有遇到action后，才会进行计算,(懒执行，会自动进行优化)
+actions ： 向应用程序返回结果,一个action就是一个job
+```
+
+###### RDD创建的三种方式
+
+```
+1.从集合中创建：paralize(), makeRDD
+2.外部系统创建RDD:从HDFS, Hbase中读取数据创建
+3.从其他RDD中创建
+```
+
+###### 从集合中创建RDD
+
+1. makeRDD
+
+```
+  def makeRDD[T: ClassTag](
+      seq: Seq[T],
+      numSlices: Int = defaultParallelism): RDD[T] = withScope {
+    parallelize(seq, numSlices)
+  }
+```
+
+2. parallelize
+
+```c
+  def parallelize[T: ClassTag]( seq: Seq[T],
+      numSlices: Int = defaultParallelism): RDD[T] = withScope {
+    assertNotStopped()
+    new ParallelCollectionRDD[T](this, seq, numSlices, Map[Int, Seq[String]]())
+  }
+```
+
+makeRDD重载版本：指定每个分片的存放位置
+
+```scala
+  def makeRDD[T: ClassTag](seq: Seq[(T, Seq[String])]): RDD[T] = withScope {
+    assertNotStopped()
+    val indexToPrefs = seq.zipWithIndex.map(t => (t._2, t._1._2)).toMap
+    new ParallelCollectionRDD[T](this, seq.map(_._1), math.max(seq.size, 1), indexToPrefs)
+  }
+  //使用方式
+  sc.makeRDD(Array(1,List("slave01"),(2,List("slave02"))))
+```
+
+ 
+
+###### RDD类型
+
+数值型RDD：   RDD.scala
+
+键值对RDD：    PairRDDFunctions.scala[所有键值对RDD都可以使用数值型RDD的操作]
+
+###### RDD的转换
+
+如何区分转换操作还是行动操作:判断函数返回值类型(返回值Array的为行动类型)
+
+###### 常用的Transformation
+
+- map
+
+```
+def map[U: ClassTag](f: T => U): 一对一进行转换
+```
+
+```scala
+scala> rdd.map(_*2).collect
+scala> rdd.map(_*2).collect
+```
+
+- mapPartitions(func)：独立的在RDD的每一个分片上运行,效果类似，效率高(作用次数少)--==传入的是集合,对整个分区做处理==
+
+```scala
+scala> var rdd = sc.makeRDD(Array(1,2,3,4))
+scala> rdd.mapPartitions(x => x.map(_*2))
+
+scala> res4.collect
+res5: Array[Int] = Array(2, 4, 6, 8)
+```
+
+mapPartition():每次处理一个分区的数据，这个分区的数据处理完后，原RDD分区中的数据才能释放，所以可能会导致OOM
+
+- mapPartitionsWithIndex(func)
+
+```scala
+def mapPartitionsWithIndex[U: ClassTag](
+      f: (Int, Iterator[T]) => Iterator[U],
+      preservesPartitioning: Boolean = false): RDD[U] 
+//作用：类似于mapPartitions,但func有一个int表示index索引
+```
+
+```scala
+//需求：创建一个RDD,使每个元素和所在分区形成一个元素组成一个新的RDD
+scala> var rdd = sc.makeRDD(Array(1,2,3,4,5))
+
+scala> rdd.mapPartitionsWithIndex((index,items)=>(items.map((index,_)))).collect
+res13: Array[(Int, Int)] = Array((0,1), (0,2), (1,3), (1,4), (1,5)
+```
+
+
+
+- filter
+
+```
+def filter(f: T => Boolean):传入一个Boolean方法，过滤数据
+```
+
+```
+scala> var rdd = sc.makeRDD(Array(1,2,3,4))
+
+scala> rdd.filter(_%3==0).collect
+res9: Array[Int] = Array(3)
+```
+
+- flatmap--将内部数据打散，
+
+```
+def flatMap[U: ClassTag](f: T => TraversableOnce[U]):RDD[U] //一对多，并将多压平
+```
+
+```scala
+//需求：创建元素1-5的RDD,并运用flatMap将每个元素扩展(1, 1,2,1,2,3,1,2,3,4,1,2,3,4,5)
+scala> var rdd = sc.makeRDD(Array(1,2,3,4,5))
+
+scala> rdd.flatMap(1 to _).collect
+res11: Array[Int] = Array(1, 1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5)
+```
+
+- sample
+
+```
+ def sample(
+      withReplacement: Boolean, //放回式抽样，无放回式抽样
+      fraction: Double, //不是精确值，相差不多
+      seed: Long = Utils.random.nextLong): RDD[T]
+//true为放回抽样，false为不放回抽样
+```
+
+- glom
+
+```
+//作用：将每一个分区形成一个数组，形成新的RDD类型是：RDD[Array[T]]
+
+```
+
+- groupBy(func)案例
+
+作用：分组，按照传入函数的返回值进行分组，将相同的key对应的放入到同一个迭代器
+
+```
+//需求:创建一个RDD,按照元素模2的值进行分组
+
+scala> var rdd = sc.makeRDD(1 to 4)
+
+scala> rdd.groupBy(_%2).collect                                              #res1: Array[(Int, Iterable[Int])] = Array((0,CompactBuffer(4, 2)), (1,CompactBuffer(1, 3)))
+```
+
+- distinct
+
+> 作用：对源RDD进行去重，返回一个新的RDD
+
+```scala
+scala> rdd = sc.makeRDD(List(1,2,3,1,2,3,4,5))
+
+scala> rdd.distinct.collect
+res4: Array[Int] = Array(4, 2, 1, 3, 5)
+```
+
+- coalesce(numPartitions)
+
+> 作用：==重新设置分区数==,   用于大数据集过滤后，提高小数据体的执行效率
+
+```
+//需求：创建一个4个分区的RDD，对其缩减分区
+scala>  val rdd = sc.parallelize(1 to 16,4)
+
+scala> rdd.partitions.size
+res9: Int = 4
+
+scala> val coalesceRDD = rdd.coalesce(3)
+
+scala>  coalesceRDD.partitions.size
+res10: Int = 3
+```
+
+- repartitions(numPartitions)
+
+> 根据分区数，重新通过网络随机洗牌所有数据
+
+```
+scala> sc.makeRDD(1 to 64, 4)
+res11: org.apache.spark.rdd.RDD[Int] = ParallelCollectionRDD[17] at makeRDD at <console>:25
+
+scala> res11.getNumPartitions
+res12: Int = 4
+
+scala> res11.repartition(2)
+res13: org.apache.spark.rdd.RDD[Int] = MapPartitionsRDD[21] at repartition at <console>:27
+
+scala> res13.getNumPartitions
+res14: Int = 2
+```
+
+coalesce 和repatition的区别
+
+coalesce重新分区，可以选择是否进行shuffle过程，有参数shuffle:Boolean=true/false决定
+
+repatition实际上是调用colesce，然后进行shuffle，但是底层调用时第二个参数默认设置为true
+
+- sortBy
+
+> 作用：使用func先对数据进行处理，按照处理后的数据对比结果排序，默认为true,正序，false--倒叙
+
+
+
+- pipe
+
+> 管道，针对每个分区，都执行一个shell脚本，返回输出的RDD
+
+```
+ rdd.pipe("/opt/module/spark/pipe.sh").collect() //pipe(脚本路径)
+```
+
+##### 双Value类型交互
+
+- union
+
+> 对源TDD和参数RDD求并集，并返回一个新的TDD，(不进行去重)
+
+```
+val rdd3 = rdd1.union(rdd2)
+```
+
+- subtract
+
+> 去除两个RDD中相同的元素
+
+```
+rdd.subtract(rdd1).collect()//有shuffle过程
+```
+
+- intersection
+
+> 作用：求交集，返回一个新的RDD
+
+```
+al rdd3 = rdd1.intersection(rdd2)
+```
+
+- cartesian笛卡尔积
+
+> 计算两个RDD的笛卡尔积，少使用
+
+```
+rdd1.cartesian(rdd2).collect()
+```
+
+- zip
+
+```
+将两个RDD组合成key/value形式的RDD， 默认两个RDD的partition数量和元素数量相同，否则抛异常
+```
+
+```
+ rdd2.zip(rdd1).collect
+```
+
+
+
+##### shuffle
+
+> 有分区改变的需要shuffle ,只是结构变化的不需要shuffle
+
+
+
+##### 算子
+
+##### value类型：
+
+```
+map(func):映射，返回一个新的RDD
+mapPartitions(func):以分区为单位进行运行
+mapPartitionsWithIndex(func):输出index
+flatMap(func): 扁平化，将结构发生改变
+glom: 生成一个数组,形成新的RDD[Array[T]]
+groupBy(func): 按照传入函数分组
+filter(func): 过滤，过滤掉为false结果的
+sample(withReplacement, fraction,seed):是否又放回抽样，true有放回，fraction:概率/次数,seed种子
+distinct([numTasks]):去重
+coalesce(numPartitions):缩减分区数
+repartition(numPartitions): shuffle，重新分区
+sortBy(func, [ascending],[numberTasks]):true-正序，false-逆序
+pipe(command, [envVars]):管道，每个分区执行脚本
+
+```
+
+##### 双Value
+
+```
+union(otherDataset): 并集
+subtract(otherDataset) :差集
+intersection(otherDataset):交集
+cartesian(otherDataset):笛卡尔积
+zip(otherDataset):拉链，合并成(k,v)
+```
+
+##### Key-value
+
+```
+partitionBy(partitioner):重新分区
+reduceByKey(func,[numTasks]):按照key聚合
+groupByKey():进行分组，然后进行shuffle
+aggregateByKey(zeroValue)(seqOp)(combOp):零值，分区内算法，分区间算法
+foldByKey(zeroValue)(func): 分区内和分区间算法相同
+combineByKey[C](createCombiner: V => C,  mergeValue: (C, V) => C,  mergeCombiners: (C, C) => C) 
+sortByKey([asc],[numTasks]):按照key排序
+mapValues:只针对v进行操作
+join():内连接
+cogroup():外链接
+
+```
+
+#### Actition
+
+```
+reduce(func):聚合，先集合分区内数据，在聚合分区间数据
+collect():以数组的形式返回所有元素
+count():返回RDD中个数
+first():返回第一个元素
+take(n): 返回前n个元素
+takeOrdered(n):返回排序后的前n个元素
+aggregate(zeroValue: U)(seqOp: (U, T) ⇒ U, combOp: (U, U) ⇒ U)：分区间也会有初始值
+fold:折叠,分区内，分区间算法相同
+saveAsTextFile():保存
+ saveAsSequenceFile(path) 
+作用：将数据集中的元素以Hadoop sequencefile的格式保存到指定的目录下，可以使HDFS或者其他Hadoop支持的文件系统。
+saveAsObjectFile(path) 作用：用于将RDD中的元素序列化成对象，存储到文件中。
+countByKey()：返回每一个key对应的元素个数
+foreach(func):遍历
+```
+
+#### 依赖关系
+
+##### 血统(lineage)
+
+RDD的血统会记录RDD的元数据信息和转换信息, 当数据丢失时，可以根据信息重新运算获的数据
+
+###### 查看血缘关系方式
+
+```
+rdd.toDebugString
+```
+
+![1550665100232](assets/1550665100232.png)
+
+```scala
+方式二：
+res2.dependencies //同样可以查看
+```
+
+![1550665196195](assets/1550665196195.png)
+
+> ==宽窄依赖从父类角度看是否是一对一==
+
+窄依赖：父RDD的每一个分区partition被子RDD的一个partition使用
+
+```
+底层源码中使用 NarrowDependency表示窄依赖
+abstract class NarrowDependency[T](_rdd: RDD[T]) extends Dependency[T] {}
+```
+
+宽依赖：父RDD的分区会被多个子RDD的一个partition使用
+
+DAG:有向无环图, RDD通过一系列转换形成有向无环图，由于宽依赖有shuffle过程，所以宽依赖是划分stage的依据 
+
+```
+阶段stage = 1+ n(n 为shuffle次数)
+```
+
+###### 任务划分
+
+Application:初始化一个SparkContext =>生成一个application
+
+Job: 一个Action算子就会生成一个Job
+
+![1550666342270](assets/1550666342270.png)
+
+stage: 遇到一个宽依赖就会划分为一个stage
+
+Task: stage是一个TaskSet,含有多个task
+
+> ==Application->Job->Stage->Task每一层都是1对n的关系==
+
+###### 源码分析
+
+```
+  def foreach(f: T => Unit): Unit = withScope {
+    val cleanF = sc.clean(f)
+    sc.runJob(this, (iter: Iterator[T]) => iter.foreach(cleanF))
+  }
+  //最终会调用到DAGScheduler中的runjob方法中，进行submitJob(提交作业)
+ //如下图所示
+```
+
+![1550666503392](assets/1550666503392.png)
+
+```
+submitJob中创建一个jobWaiter
+val waiter = new JobWaiter(this, jobId, partitions.size, resultHandler)
+最终会触发 handleJobSubmitted--》
+```
+
+![1550667015580](assets/1550667015580.png)
+
+
+
+![1550667155051](assets/1550667155051.png)
+
+![1550667264878](assets/1550667264878.png)
+
+![1550667389208](assets/1550667389208.png)
+
+
+
+![1550668250210](assets/1550668250210.png)
+
+
+
+```
+从源码中可以看到shuffle中类型只有两种 ShuffledMapStage 和resultStage
+```
+
+![1550668680233](assets/1550668680233.png)
+
+![1550669072372](assets/1550669072372.png)
+
+![1550669249168](assets/1550669249168.png)
+
+```
+ 
+ /** Submits stage, but first recursively submits any missing parents. */
+  private def submitStage(stage: Stage) {
+    val jobId = activeJobForStage(stage)
+    if (jobId.isDefined) {
+      logDebug("submitStage(" + stage + ")")
+      if (!waitingStages(stage) && !runningStages(stage) && !failedStages(stage)) {
+        val missing = getMissingParentStages(stage).sortBy(_.id)
+        logDebug("missing: " + missing)
+        if (missing.isEmpty) {
+          logInfo("Submitting " + stage + " (" + stage.rdd + "), which has no missing parents")
+          submitMissingTasks(stage, jobId.get)
+        } else {
+          for (parent <- missing) {
+            submitStage(parent)
+          }
+          waitingStages += stage
+        }
+      }
+    } else {
+      abortStage(stage, "No active job for stage " + stage.id, None)
+    }
+  }
+
+```
+
+##### RDD缓存
+
+通过persist(持久化)方法或cache方法将前面的计算结果缓存，persist和cache是在触发action时，这个RDD将会被缓存在内存
+
+```
+cache实质上调用的是persist()
+```
+
+![1550674214577](assets/1550674214577.png)
+
+![1550674314512](assets/1550674314512.png)
+
+存储级别分为：硬盘，内存，备份，硬盘和内存，序列化等进行组合
+
+##### RDD CheckPoint
+
+检查点机制，(本质是将RDD写入Disk做检查点) ，首先使用 sc.setCheckpointDir()设置的,在checkpoint的过程中，RDD的所有依赖于父RDD中的信息将全部被移除,
+
+```
+ sc.setCheckpointDir("hdfs://hadoop102:9000/checkpoint")
+ var ch = rdd.map((_,1))
+ ch.checkpoint
+```
+
+##### 键值对RDD数据分区
+
+> Hash分区
+>
+> Range分区
+>
+> 自定义分区
+
+
+
+##### 数据读取与保存
+
+> Text文件
+>
+> Json文件
+>
+> Sequence文件
+>
+> 对象文件
+
+##### 文件系统类数据读取与保存
+
+> HDFS
+>
+> MySQL
+>
+> HBase
+
+```scala
+//JDBCRdd
+package JDBCRDDTest
+
+import java.sql.DriverManager
+
+import org.apache.spark.rdd.JdbcRDD
+import org.apache.spark.{SparkConf, SparkContext}
+
+/*
+有两点错误需要注意：一：url中协议格式： jdbc:mysql(子协议)://主机:端口号/数据库名
+                 二：从结果集中获取数据时，一定要对应具体的类型,getString  getInt要和数据本身类型对应
+ */
+import org.apache.log4j.{Level, Logger}
+object TestJDBCRDD {
+  Logger.getLogger("org").setLevel(Level.ERROR)
+  def main(args: Array[String]): Unit = {
+    //jdbcRead()
+    jdbcWrite()
+  }
+  //jdbc写操作
+  def jdbcWrite(): Unit ={
+    val conf = new SparkConf().setMaster("local[*]").setAppName("test")
+    val sc = new SparkContext(conf)
+    //jdbc写操作
+    //准备数据
+
+    var rdd = sc.makeRDD(Array(("pangdi", "femail")))
+
+    //以分区方式进行
+    rdd.foreachPartition(t => {  //先分区
+
+      //创建jdbc驱动
+      Class.forName("com.mysql.jdbc.Driver")
+      var url = "jdbc:mysql://hadoop102:3306/company"
+      val connection = DriverManager.getConnection(url, "root","1")
+      var sqlString = "insert into staff(name, sex) values(?,?)"
+      val statement = connection.prepareStatement(sqlString) //预编译
+      //设置相应蛇形
+     t.foreach( data =>{ //再分区内数据
+       //设置属性
+        statement.setString(1,data._1)
+        statement.setString(2,data._2)
+       //设置完成后，进行执行
+       statement.execute()
+     })
+
+    })
+
+
+  }
+
+
+
+  //读数据
+  def jdbcRead(): Unit ={
+    val conf = new SparkConf().setMaster("local[*]").setAppName("test")
+    val sc = new SparkContext(conf)
+    //jdbc
+    var url = "jdbc:mysql://hadoop102:3306/company"
+    val driver = "com.mysql.jdbc.Driver"
+    val username = "root"
+    val password = "1"
+
+    var sqlString = "select * from staff where id>= ? and id<= ?"
+
+    val resultrdd = new JdbcRDD(sc,
+      () => {
+        Class.forName(driver) //driver写错了
+        val connection = DriverManager.getConnection(url, username, password)
+        connection
+      },
+      sqlString,
+      1,
+      10,
+      1, //分区个数
+      r => {
+        //回调函数，返回的结果集
+        (r.getInt(1), r.getString(2), r.getString(3))
+      }
+    )
+    resultrdd.foreach(println)
+
+    //关闭资源
+    sc.stop()
+  }
+
+
+  /*
+    注意点：insertData中的参数类型
+            prepareStatement参数 预编译软件
+   */
+//  def jdbcWrite(): Unit ={
+//    var conf = new SparkConf().setMaster("local[*]").setAppName("test")
+//    var sc = new SparkContext(conf)
+//
+//    //写数据
+//    //准备数据
+//    val data = sc.parallelize(List(("wang","Female")))
+//    data.foreachPartition(insertData)
+//    //foreach 和foreachPartition
+//
+//    //事件的准备在driver中，事件的执行在Executor中
+//  }
+//  def insertData(iterator: Iterator[(String,String)]): Unit ={
+//    Class.forName ("com.mysql.jdbc.Driver").newInstance()
+//    val conn = java.sql.DriverManager.getConnection("jdbc:mysql://hadoop102:3306/company", "root", "1")
+//    iterator.foreach(data => {
+//      val ps = conn.prepareStatement("insert into staff(name,sex) values (?,?)")
+//      ps.setString(1, data._1)
+//      ps.setString(2, data._2)
+//      ps.executeUpdate()
+//    })
+//  }
+
+//  def jdbcRead(): Unit ={
+//    //spark配置信息
+//    val conf = new SparkConf().setMaster("local[*]").setAppName("test")
+//    //创建spakrContext上下文信息
+//    val sc = new SparkContext(conf)
+//
+//    var driver = "com.mysql.jdbc.Driver"
+//    var url = "jdbc:mysql://hadoop102:3306/company"
+//    var username = "root"
+//    var password = "1"
+//
+//    var sqlString="select * from  staff where id>=? and id<= ?"
+//    //创建JDBCrdd
+//    val rdd = new JdbcRDD(
+//      sc,
+//      () => {
+//        Class.forName(driver)
+//        val connection = DriverManager.getConnection(url, username, password)
+//        connection
+//      },
+//      sqlString,
+//      1,
+//      10,
+//      1,
+//      r => (r.getInt(1), r.getString(2), r.getString(3))
+//    )
+//    rdd.foreach(println)
+//
+//    //关闭资源
+//    sc.stop()
+//
+//  }
+}
+
+
+```
+
+
+
+#### 累加器
+
+> 分布式只写变量
+
+存在原因：分布式系统中，每个Task中会得到变量的副本，变量的副本在Executor中发生改变，但不会影响Driver中的变量，所以Driver中声明的变量值不会发生改变
+
+作用：累加器是一个分布式只写变量，可以解决上述问题
+
+- code
+
+```scala
+import org.apache.spark.{SparkConf, SparkContext}
+
+object TestAccumulator {
+  import org.apache.log4j.{Level, Logger}
+  Logger.getLogger("org").setLevel(Level.ERROR)
+  def main(args: Array[String]): Unit = {
+    // 准备Spark配置信息
+    val conf: SparkConf = new SparkConf().setMaster("local[*]").setAppName("Test")
+
+    // 创建Spark上下文对象
+    val sc : SparkContext = new SparkContext(conf)
+
+    var rdd = sc.makeRDD(1 to 5)
+//    println(rdd.reduce(_ + _))
+    val sum = sc.longAccumulator("sum")
+    rdd.foreach( x =>{
+      sum.add(x) //加数据
+    })
+    println(sum.value)
+  }
+}
+```
+
+##### 自定义累加器
+
+1. 需要继承AccumulatorV2[in , out] 声明两个泛型, 然后重写几个方法
+2. 使用时需要进行regist注册, 然后和系统的变量使用就一样了
+
+```scala
+package accumulator
+
+import java.util
+
+import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.util.AccumulatorV2
+
+object CustomerAccumulatorTest {
+  def main(args: Array[String]): Unit = {
+    // 准备Spark配置信息
+    val conf: SparkConf = new SparkConf().setMaster("local[*]").setAppName("Test")
+
+    // 创建Spark上下文对象
+    val sc : SparkContext = new SparkContext(conf)
+
+    var rdd = sc.makeRDD(Array("hadoop","pangdi","dilireba","wangyg"))
+    //声明累加器
+    var acc = new CustomerAccumulator()
+    //注册
+    sc.register(acc)
+    //rdd处理
+    rdd.foreach(word =>{
+      acc.add(word)
+    })
+    //获取
+    println(acc.value)
+
+    //关闭资源
+    sc.stop()
+  }
+}
+
+//泛型[in, out]
+class CustomerAccumulator extends AccumulatorV2[String, util.ArrayList[String]] {
+  var blackList = new util.ArrayList[String]()
+
+  //是否是初始值
+  override def isZero: Boolean = {
+    blackList.isEmpty
+  }
+
+  //复制，拷贝
+  override def copy(): AccumulatorV2[String, util.ArrayList[String]] = {
+    var acc = new CustomerAccumulator()
+    acc
+  }
+
+  //重置
+  override def reset(): Unit = {
+    blackList.clear()
+  }
+
+  override def add(v: String): Unit = {
+    if (v.contains("h")) {
+      blackList.add(v)
+    }
+  }
+
+  //合并
+  override def merge(other: AccumulatorV2[String, util.ArrayList[String]]): Unit = {
+    blackList.addAll(other.value)
+  }
+
+  //获取累加器的值
+  override def value: util.ArrayList[String] = blackList
+}
+```
+
+
+
+
+
+#### 广播变量
+
+> 分布式只读变量
+
+
+
+## 其他
+
+Redis Lab: 从Redis中读写数据，第三方工具
+
+
+
+## Exercise
+
+1.Spark内置模块包括哪些？请分别简述其功能。
+	spark= sparkcore+sparksql+sqparkStreaming+sparkMlib+sparkGraphx+集群管理
+		sparkcore:spark进行基于内存的计算,类似于mapreduce
+		sparksql: 执行sql语句，类似于hive进行查询功能
+		sparkstreaming: 进行实时性计算
+		sparkMlib: 提供机器学习算法的封装
+		sparkGraphx:提供图计算
+2.Spark的特点有哪些？简述。
+	快 易用 通用 兼容性
+		快：基于内存，效率比hadoop快100倍
+		易用:
+		通用：
+		兼容性： 和hadoop中的yarn进行了集成
+3.Spark中核心的进程有哪些？分别说明其主要功能。
+	Driver Executor
+		Driver: 驱动类，创建sparkcontext,跟踪Executor的运行装填，为执行器节点调度任务
+		Executor: 执行器，执行spark具体的任务，并将状态信息返回给Driver
+	Master Worker :只在standalone模式下才有
+		master: 类似于Yarn的Rm,用于管理集群中节点，
+		Worker: 类似于Yarn中的datanode,用于管理单个节点的资源
+4.Spark有几种运行模式，如何指定在不同的模式下运行？
+	三种运行模式：本地模式 standalone模式， yarn模式
+	--master:
+		本地模式：不用指定，默认local[*]
+		standalone模式: --master spark://hadoop102:7077 
+		yarn模式: --master yarn
+5.如何提交一个Spark任务？主要参数有哪些？
+	通过bin/spark-submit
+	--master :指定master节点
+	--class :指定运行主类全路径
+	--
+6.画出在Standalone-Client模式下提交任务的流程图。
+
+
+
+7.画出在Yarn-Cluster模式下提交任务的流程图。
+
+
+
+8.简述你所理解的不同运行模式之间的区别。
+	Driver所在的位置不同,client模式下，Driver和Client在同一个节点，导致这个节点负载较大，
+	cluster模式下：Driver和CLient不在同一个节点，对于集群负载较为均衡
+
+
+
+##### 算子
+
+```
+operator: 操作,方法
+
+```
+
+
+
+###### spark中设置log日志输出级别
+
+
+
+```
+//方式一：
+import org.apache.log4j.{Level, Logger}
+Logger.getLogger("org").setLevel(Level.ERROR)
+//方式二：
+将第一行的log4j.rootCategory=INFO, console改成log4j.rootCategory=ERROR, console，只显示ERROR级别的日志。
 ```
 
