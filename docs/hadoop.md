@@ -4938,10 +4938,10 @@ public class FlowBean implements WritableComparable<FlowBean>{
 ​		return sumFlow;
 ​	}
 ​	
-	public void setSumFlow(long sumFlow) {
-		this.sumFlow = sumFlow;
-	}
-	
+​	public void setSumFlow(long sumFlow) {
+​		this.sumFlow = sumFlow;
+​	}
+​	
 	@Override
 	public String toString() {
 		return upFlow + "\t" + downFlow + "\t" + sumFlow;
@@ -5466,13 +5466,9 @@ public void close(TaskAttemptContext context) throws IOException, InterruptedExc
 
 
 
-
-
 ## Hadoop扩展
 
+#### 调优参数：mapreduce.job.reduce.slowstart.completedmaps
 
-
-#### Yarn源码分析之参数mapreduce.job.reduce.slowstart.completedmaps介绍
-
-
+https://blog.csdn.net/qq1010234991/article/details/87864654
 
