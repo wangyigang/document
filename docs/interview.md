@@ -366,6 +366,69 @@ HDFS采用master/slave架构，一个HDFS集群由一个namenode和一定的data
     }
 ```
 
+##### 冒泡排序
+
+```java
+import org.junit.Test;
+
+public class BubbleSort {
+    @Test
+    public void test(){
+        int[] data = { 9, -16, 21, 23, -30, -49, 21, 30, 30 };
+        bubbleSort(data, 0,data.length-1);
+        for (int num : data) {
+            System.out.print(num+" ");
+        }
+    }
+    public void bubbleSort(int[] arr, int left, int right){
+        for(int i=0; i<arr.length-1; i++){
+            for(int j=0; j<arr.length-i-1; j++){
+                if(arr[j] >arr[j+1]){
+                    int tmp = arr[j];
+                    arr[j] = arr[j+1];
+                    arr[j+1] = tmp;
+                }
+            }
+        }
+    }
+}
+```
+
+##### 二分查找
+
+```
+import org.junit.Test;
+
+public class binarySearchTest{
+    @Test
+    public void test(){
+        int[] arr = new int[]{1,3,5,7,9,10};
+        System.out.println(binarySearch(arr, 5));
+    }
+
+    private int binarySearch(int[] arr, int num) {
+        int left =0;
+        int right = arr.length-1;
+        int mid = (left+right)/2;
+        while(left<=right){
+            if(arr[mid] == num){
+                return mid;
+            }else if(num > arr[mid] ){
+                left=mid+1;
+                mid = (left+right)/2;
+            }else{
+                right=mid-1;
+                mid = (left+right)/2;
+            }
+        }
+        return -1;
+    }
+}
+
+```
+
+
+
 
 
 ##### 手写Spark-WordCount--六种方式
@@ -392,4 +455,26 @@ sc.parallelize(Array("a","b","c","d"),2).glom.map(x=>x.reduce(_ + _)).map(x=>x).
 ```
 
 
+
+#### Linux
+
+常用的linux命令:
+
+top: 显示内存
+
+ls :显示文件系统
+
+df : 查看磁盘情况
+
+ps : 查看进程相关
+
+netstat : 查看网络相关
+
+ifconfig: 查看ip地址
+
+
+
+#### shell工具
+
+##### awk 
 

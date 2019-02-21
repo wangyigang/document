@@ -1328,7 +1328,47 @@ def test5(): Unit = {
 
 
 
+##### 样例类
 
+###### 基本介绍
+
+```
+模板
+首先是一个类，用caser修饰的
+case class Dollar  =>样例类, 对应底层生成两个class文件 Dollar.class 和Dollar$.class
+样例类是为模式匹配而优化的类
+构造其中的每一个参数都会成为val--除非被显示声明为var
+提供apply（不用new就能构造对象） 和 unapply(对象提取器，让模式匹配可以工作)
+自动生成toString,equals,hashCode和copy方法
+```
+
+- code
+
+```scala
+ def test1(): Unit ={
+    for (amt <- Array(Dollar(1000.0), Currency(1000.0, "RMB"), NoAmount)) {
+      val result = amt match {
+        //说明
+        case Dollar(v) => "$" + v //对象匹配 1000.0
+        //说明
+        case Currency(v, u) => v + " " + u // 1000.0 RMB
+        case NoAmount => ""
+      }
+      println(amt + ": " + result)
+    }
+  }
+}
+
+//抽象类
+abstract class Amount
+//Dollar 样例类
+case class Dollar(value: Double) extends Amount
+//Currency 样例类
+case class Currency(value: Double, unit: String) extends Amount
+//NoAmount 样例类
+case object NoAmount extends Amount
+
+```
 
 
 
