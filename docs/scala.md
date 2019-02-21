@@ -1370,6 +1370,46 @@ case object NoAmount extends Amount
 
 ```
 
+- code
+
+```
+  //copy方法类似于clone方法，生成一个与现有值相同的新对象
+  def test2(): Unit ={
+    var amt = new  Currency(3000.0, "RMB")
+    val amt2 = amt.copy() //类似于clone，创建的对象和amt的属性一样
+    println(amt2.toString)
+    //还可以在copy的同时修改属性值
+    val amt3 = amt.copy(value =8000.0)
+    println(amt3)
+  }
+```
+
+
+
+##### 匹配嵌套结构
+
+```
+//知识点1： 将desc绑定到第一个Book
+case Bundle(_, _,Book(desc,_), _*) => desc //_表示忽略这种，  _*表示所有
+//知识点2：通过@XXX 将嵌套的值绑定到变量中
+case Bundle(_, _, art @ Book(_, _), rest @ _*) => (art, rest)
+//知识点3：直接使用变量绑定最后剩下的元素--rest
+case Bundle(_, _, art @ Book(_, _), rest) => (art, rest)
+```
+
+- code
+
+```
+ def price(item: Item): Double = {
+    item match {
+      case Book(_,p) => p
+      case Bundle(_,discount, its @ _*) => its.map(price).sum - discount  //110 - 20 = 90 //首先匹配到discount,然后，剩余部分全部给its, 然后its.map进行遍历，然后继续调用price方法，递归调用
+    }
+  }
+```
+
+
+
 
 
 ### 函数式编程高级
@@ -5769,7 +5809,7 @@ operator: 操作,方法
 
 
 
-###### spark中设置log日志输出级别
+##### spark中设置log日志输出级别
 
 
 
@@ -5779,5 +5819,21 @@ import org.apache.log4j.{Level, Logger}
 Logger.getLogger("org").setLevel(Level.ERROR)
 //方式二：
 将第一行的log4j.rootCategory=INFO, console改成log4j.rootCategory=ERROR, console，只显示ERROR级别的日志。
+```
+
+##### RDD文件读取textFile与分区个数
+
+makeRDD中使用 Math.max(总核数, 2) 的较大值 
+
+```
+conf.getInt("spark.default.parallelism", math.max(totalCoreCount.get(), 2))
+```
+
+textFile文件读取时，使用较小值
+
+```
+ //源码中的体现
+ math.min(defaultParallelism, 2)--最小的分区数量，真正使用hadoopfs的切片系统
+ //这个是最小分区，但真正的分区可能会比数字大，如果文件大小和个数不能整除，会多出一个分区
 ```
 

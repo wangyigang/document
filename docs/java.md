@@ -2721,8 +2721,6 @@ public class String {
 
 
 
-
-
 #### GC与垃圾回收
 
 ##### 可达性分析算法
@@ -2923,4 +2921,189 @@ Monitor是线程私有的数据结构，每一个线程都有一个可用monitor
 共享锁是指该锁可被多个线程所持有。如果线程T对数据A加上共享锁后，则其他线程只能对A再加共享锁，不能加排它锁。获得共享锁的线程只能读数据，不能修改数据。
 
 独享锁与共享锁也是通过AQS来实现的，通过实现不同的方法，来实现独享或者共享。
+
+
+
+
+
+## JDBC
+
+> sun公司提供的一套操作数据库的接口API，只需要面向这套接口编程即可，不同数据库厂商都面向这套接口，提供了统一的服务， 使用统一的方式，操作不同的数据库，减少了学习成本
+
+###### 步骤
+
+```
+1. 导入依赖(maven依赖)
+2. Class.forName("com.mysql.jdbc.Driver");
+	//jdbc:mysql://localhost:3306/testdb?user=root&password=123456
+   String url = "jdbc:mysql://hadoop102:3306/company";
+   String username ="root";
+   String password = "1";
+   Connection conn = DriverManager.getConnection(url, username, password);
+ 3.逻辑处理
+ 4.关闭连接conn.close()
+```
+
+
+
+##### PreparedStatement
+
+> 由于statement拼接sql较为麻烦，会有sql注入风险，Blob类型数据不能处理，所以使用PreparedStatement可以避免上述问题 
+
+功能：preparedStatement是statement的子接口，表示一条预编译过的SQL语句
+
+```
+setXXX(index, value ):对参数进行赋值, 索引从1开始
+executeQuery(): 执行查询操作
+result.next(): 进行遍历 
+getXXX(field) : 从redultset的遍历中获取每个字段
+executeUpdate(): 执行查询功能
+```
+
+- code
+
+```java
+	//1、连接数据库
+		Class.forName("com.mysql.jdbc.Driver");
+		
+		String url = "jdbc:mysql://localhost:3306/test";
+		String user = "root";
+		String password = "123456";
+		Connection conn = DriverManager.getConnection(url, user, password);
+
+		//2、编写带？的SQL
+		String sql = "INSERT INTO t_employee (ename,tel,gender,salary,did) VALUES(?,?,?,?,?)";
+		
+		// 3、准备一个PreparedStatement：预编译sql
+		PreparedStatement pst = conn.prepareStatement(sql);// 对带？的sql进行预编译
+
+		// 4、把?用具体的值进行代替
+		pst.setString(1, name);
+		pst.setString(2, tel);
+		pst.setString(3, gender);
+		pst.setDouble(4, salary);
+		pst.setInt(5, did);
+
+		// 5、执行sql
+		int len = pst.executeUpdate();
+		System.out.println(len>0?"添加成功":"添加失败");
+
+		// 6、释放资源
+		pst.close();
+		conn.close();
+```
+
+
+
+###### 批处理
+
+```
+addBatch():添加批处理   //循环内进行添加批处理
+executeBatch(): 执行批处理语句 //循环结束时一次性执行
+```
+
+- code
+
+```java
+	@Test
+	public void useBatch()throws Exception{
+		Class.forName("com.mysql.jdbc.Driver");
+		
+		String url = "jdbc:mysql://localhost:3306/test?rewriteBatchedStatements=true";
+		String user = "root";
+		String password = "123456";
+		Connection conn = DriverManager.getConnection(url, user, password);
+		
+		
+        String sql = "INSERT INTO t_department(dname,description) VALUES(?,?)";
+        PreparedStatement st = conn.prepareStatement(sql);
+        
+        for(int i=0; i<1000; i++){
+        	st.setString(1, "测试部门" + i);
+        	st.setString(2, "测试部门描述"  + i);
+        	
+        	st.addBatch();
+        }
+        
+        st.executeBatch();
+		
+		st.close();
+		conn.close();
+	}
+```
+
+
+
+###### 事务
+
+```
+1.调用 Connection 对象的 setAutoCommit(false); 以取消自动提交事务
+2.在所有的 SQL 语句都成功执行后，调用 commit(); 方法提交事务
+3.在其中某个操作失败或出现异常时，调用 rollback(); 方法回滚事务
+4.若此时 Connection 没有被关闭, 则需要恢复其自动提交状态 setAutoCommit(true);
+```
+
+- code
+
+```java
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+public class TestTransaction {
+	public static void main(String[] args){
+		Connection conn = null;
+		try {
+			//1、连接数据库
+			Class.forName("com.mysql.jdbc.Driver");
+
+			String url = "jdbc:mysql://localhost:3306/test";
+			String user = "root";
+			String password = "123456";
+			conn = DriverManager.getConnection(url, user, password);
+			//设置手动提交
+			conn.setAutoCommit(false);
+
+			String sql1 = "update t_department set description = ? where did = ?";
+			PreparedStatement pst1 = conn.prepareStatement(sql1);
+			pst1.setObject(1, "挣大钱的");
+			pst1.setObject(2, 4);
+			int len1 = pst1.executeUpdate();
+			System.out.println(len1>0?"更新部门信息成功":"更新部门信息失败");
+			pst1.close();
+			
+			String sql2 = "update t_employee set salary = salary + ? where did = ?";
+			PreparedStatement pst2 = conn.prepareStatement(sql2);
+			pst2.setObject(1, 20000);
+			pst2.setObject(2, 4);
+			int len2 = pst2.executeUpdate();
+			System.out.println(len2>0?"更新部门信息成功":"更新部门信息失败");
+			pst2.close();
+			
+			conn.commit();
+		}catch (Exception e) {
+			try {
+				if(conn!=null){
+					conn.rollback();
+				}
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			}
+		} finally{
+			try {
+				if(conn!=null){
+					//恢复自动提交
+					conn.setAutoCommit(true);
+					//释放连接
+					conn.close();
+				}
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+}
+```
 
