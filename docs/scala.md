@@ -5745,6 +5745,145 @@ class CustomerAccumulator extends AccumulatorV2[String, util.ArrayList[String]] 
 
 > 分布式只读变量
 
+```scala
+def test1(): Unit = {
+    // 准备Spark配置信息
+    val conf: SparkConf = new SparkConf().setMaster("local[*]").setAppName("Test")
+    // 创建Spark上下文对象
+    val sc: SparkContext = new SparkContext(conf)
+
+    val rdd1: RDD[(String, Int)] = sc.makeRDD(Array(("a", 1), ("b", 1)))
+    var arr = Array(("a", 3), ("b", 4))
+    var arrBroadcast = sc.broadcast(arr)
+
+    //    //通过只写变量获取结果数据
+    var acc = new CustomerAccumulator()
+    sc.register(acc)
+
+    val resultRDD = rdd1.map(t => {
+      val rddkey = t._1
+      arrBroadcast.value.map(t1 => {
+        val key = t1._1
+        if (rddkey.equals(key)) {
+          val strResult = "(" + rddkey + t._2 + t1._2 + ")"
+          acc.add(strResult)
+        }
+      })
+    })
+    resultRDD.collect()
+
+    println(acc.value)
+    //关闭
+    sc.stop()
+  }
+}
+
+
+//泛型[in, out]
+class CustomerAccumulator extends AccumulatorV2[String, util.ArrayList[String]] {
+  var blackList = new util.ArrayList[String]()
+
+  //是否是初始值
+  override def isZero: Boolean = {
+    blackList.isEmpty
+  }
+
+  //复制，拷贝
+  override def copy(): AccumulatorV2[String, util.ArrayList[String]] = {
+    var acc = new CustomerAccumulator()
+    acc
+  }
+
+  //重置
+  override def reset(): Unit = {
+    blackList.clear()
+  }
+
+  //累加
+  override def add(v: String): Unit = {
+    blackList.add(v)
+  }
+
+  //合并
+  override def merge(other: AccumulatorV2[String, util.ArrayList[String]]): Unit = {
+    blackList.addAll(other.value)
+  }
+
+  //获取累加器的值
+  override def value: util.ArrayList[String] = blackList
+}
+```
+
+#### RDD总结
+
+###### 弹性
+
+```
+基于内存的计算框架，但也可能会使用磁盘进行处理
+分区的弹性：shuffle会重新分片
+容错的弹性： checkpoint&cache 数据丢失可恢复
+```
+
+###### DAG
+
+```
+有向无环图，划分阶段
+```
+
+
+
+###### 数量
+
+```
+Executor: 提交应用时指定
+分区: 内存中：max(cpu核数,2)
+	 文件读取：min(cpu核数，2)--指定最小分区,具体取决于hadoop切片规则
+阶段: 1 （resultStage）+n(shufflem个数)
+Task:如果没有指定并行度，采用上一个阶段的分区数，若指定，会按照指定的作为分区数(任务数一般是cpu的2-3倍)
+```
+
+
+
+## SparkSQL
+
+###### 是什么：
+
+​	 sparkSQL是spark处理结构化数据的一个模块，有两个编程抽象：DataFrame和DataSet，==将sparkSQL转换成RDD,然后提交到集群执行==，执行效率非常快
+
+##### DataFrame
+
+​	DataFrame是一个以RDD为基础的分布式数据集，类似于二维表格，DataFrame记录==结构信息==
+
+```
+DataFrame也是懒执行，性能比RDD高，因为执行计划优化了
+```
+
+###### 创建
+
+```
+通过Spark数据源创建
+从RDD进行转换
+同HiveTable查询放回
+```
+
+###### DataSet
+
+​	分布式数据集合，是DataFrame的一个扩展，最新的数据抽象
+
+```
+DataSet带有类型信息,既带有结构信息又带有类型信息
+```
+
+###### SparkSession
+
+​	SparkSsssion是Spark最新的SQL查询起始点，SparkSession内部封装了sparkContext
+
+
+
+
+
+
+
 
 
 ## 其他
