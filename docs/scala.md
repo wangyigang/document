@@ -5862,21 +5862,238 @@ DataFrame也是懒执行，性能比RDD高，因为执行计划优化了
 
 ```
 通过Spark数据源创建
+	spark.read.json("/user.json")
+	res4: org.apache.spark.sql.DataFrame = [age: bigint, name: string]
+	scala> res4.show
+	res4.createTempView("user") //创建临时视图
+	scala>spark.sql("select * from user where age>24").show
 从RDD进行转换
 同HiveTable查询放回
 ```
 
+创建全局视图
+
+```
+res4.createGlobalTempView("student")
+park.sql("select * from global_temp.student where age>24").show //使用时加范围global_temp
+```
+
+##### RDD，DataFrame, DataSet三者之间转换
+
+###### RDD，DataFrame转换
+
+```
+1. RDD转化成DataFrame
+	var rdd =sc.makeRDD(Array((1,"zhangsan")))
+	scala> rdd.toDF()
+	res14: org.apache.spark.sql.DataFrame = [_1: int, _2: string]
+2.DataFrame转RDD
+	df.rdd
+```
+
+###### DataFrame,DataSet之间的转换
+
+```
+DataFrame=>DataSet
+	df.as[Person]
+DataSet=>DataFrame
+	ds.toDF
+```
+
+###### RDD，DataSet转换
+
+```
+RDD=>DataSet
+	var classRDD=rdd.map(t=>{
+        Person(t._1, t._2)
+	})
+	classRDD.toDS
+DataSet=>RDD
+	dataset.rdd
+```
+
+> 三者全是惰性机制
+>
+> 三者之间有共同的函数
+>
+> 三者都是弹性分布式数据集
+>
+> 注意隐式转换: import spark.implicits._
+
 ###### DataSet
 
-​	分布式数据集合，是DataFrame的一个扩展，最新的数据抽象
+​	分布式数据集合，是DataFrame的一个扩展，最新的数据抽象,DataSet是一个具有强类型的数据集合
 
-```
+```scala
 DataSet带有类型信息,既带有结构信息又带有类型信息
+DataSet创建
+	//首先创建样例类
+	case class Person(name:String, age:Long)
+	scala> var caseDs = Seq(Person("reba",23)).toDS()
+	caseDs: org.apache.spark.sql.Dataset[Person] = [name: string, age: bigint]
+	caseDs.createOrReplaceTempView("person") //创建临时视图
 ```
+
+##### IDEA创建SparkSQL程序
+
+```scala
+
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.{SparkConf, sql}
+
+object SparkSQLTest {
+  import org.apache.log4j.{Level, Logger}
+  Logger.getLogger("org").setLevel(Level.ERROR)
+
+  def main(args: Array[String]): Unit = {
+    //创建sparkconf
+    val conf = new SparkConf().setMaster("local[*]").setAppName("test")
+    //创建sparksession
+    val spark = SparkSession.builder().config(conf)
+      .getOrCreate() //获取或者创建
+
+    //增加隐式转换规则
+    import  spark.implicits._
+
+
+    val dataFrame = spark.read.json("input/user.json")
+    val ds = dataFrame.as[Person]
+
+//    dataFrame.show()
+    ds.createOrReplaceTempView("person")
+
+    spark.sql("select * from person ").show()
+
+    //关闭资源
+    spark.close()
+  }
+}
+
+case class Person(var name:String, var age:Long)
+```
+
+
+
+##### 自定义UDAF函数
+
+```scala
+/*
+  注意点：错误一：忘记导入隐式转换，所以出现编译错误,由于插件的原因，在真正运行的时候才爆出来
+          错误二：user中数据不能是int类型，只能是long类型，当前从文件获取，不能进行类型推断，所以会用bigint范围扩展，不能用int类型接收
+ */
+object UDAFClassTest {
+  import org.apache.log4j.{Level, Logger}
+  Logger.getLogger("org").setLevel(Level.ERROR)
+
+  def main(args: Array[String]): Unit = {
+    //强类型
+    test1()
+  }
+  def test1(): Unit ={
+    val conf = new SparkConf().setMaster("local[*]").setAppName("test")
+    val spark = SparkSession.builder().config(conf).getOrCreate()
+
+    //需要导入隐式依赖，否则会报错
+    import spark.implicits._
+
+    //创建函数对象
+    val avgClassUDAF = new AgeAvgClassUDAF
+    //构建UDAF函数
+    val column = avgClassUDAF.toColumn.name("avgName")
+
+    //准备数据
+    val dataFrame = spark.read.json("input/user.json")
+    val userDs = dataFrame.as[User]
+    userDs.select(column).show()
+
+    //关闭资源
+    spark.stop()
+  }
+}
+case class User(name:String, age:Long)
+case class AvgBuffer(var sum:Long, var count:Long)
+
+/**
+  * 强类型语言
+  */
+//泛型
+class AgeAvgClassUDAF extends Aggregator[User, AvgBuffer, Double]{
+  /**
+    * 初始值
+    * @return
+    */
+  override def zero: AvgBuffer = {
+    AvgBuffer(0L, 0L)
+  }
+
+  /**
+    * 同一个节点（分区）的数据合并
+    * @param b
+    * @param a
+    * @return
+    */
+  override def reduce(b: AvgBuffer, a: User): AvgBuffer = {
+    b.sum+= a.age
+    b.count+=1
+    b
+  }
+
+  override def merge(b1: AvgBuffer, b2: AvgBuffer): AvgBuffer = {
+    b1.sum+=b2.sum
+    b1.count+=b2.count
+    b1
+  }
+
+  override def finish(reduction: AvgBuffer): Double = {
+    reduction.sum.toDouble /reduction.count
+  }
+
+  override def bufferEncoder: Encoder[AvgBuffer] = {
+    Encoders.product
+  }
+
+  override def outputEncoder: Encoder[Double] = {
+    Encoders.scalaDouble
+  }
+}
+```
+
+
 
 ###### SparkSession
 
 ​	SparkSsssion是Spark最新的SQL查询起始点，SparkSession内部封装了sparkContext
+
+
+
+##### 三者之间的关系
+
+![1550839859067](assets/1550839859067.png)
+
+
+
+#### SparkSql数据的加载与保存
+
+##### 加载数据
+
+```
+format:指定加载数据类型
+load :通用接口，默认格式是Parquet
+```
+
+##### 写数据
+
+```
+write:写数据
+format：指定数据类型,csv,json,orc..
+saveMode(): Append/Overwrite/Error/Ignore
+```
+
+
+
+
+
+
 
 
 

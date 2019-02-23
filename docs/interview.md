@@ -456,7 +456,7 @@ sc.parallelize(Array("a","b","c","d"),2).glom.map(x=>x.reduce(_ + _)).map(x=>x).
 
 
 
-#### Linux
+## Linux
 
 常用的linux命令:
 
@@ -477,4 +477,51 @@ ifconfig: 查看ip地址
 #### shell工具
 
 ##### awk 
+
+```shell
+-f : 列号，提取第几列
+-d : 分隔符
+//-f :指定提取的列 -d :指定分隔符
+cut -f 1 -d " " ./README.txt 
+```
+
+##### sed
+
+利用模式空间的方式，将数据缓存在临时缓冲区中，然后进行处理，不改变原有数据
+
+```shell
+基本用法： sed [选项参数] 'command' 文件名称 
+选项参数： -e  直接在指令模式上进行sed编辑
+command: a : 下一行新增字符
+		 d: 删除
+		 s ： s/regexp/replacement/g  ,g可以替换多个
+		 i ： 覆盖原有文件
+```
+
+##### awk
+
+把文件以行为当为读入，默认以空格切分
+
+```
+基本语法：awk [选项参数] 'pattern1 {action1} pattern2 {action2}...' filename
+选项参数： -F: 指定分隔符
+		-v : 赋值一个用户定义的变量
+
+```
+
+##### sort
+
+将文件进行排序，并将排序结果输出
+
+```
+基本语法： sort (选项) (参数)
+选项： -n :依照数值大小排序
+		-r : 逆序
+		-t: 设置排序分隔符
+		-k: 指定排序的列
+```
+
+
+
+
 
