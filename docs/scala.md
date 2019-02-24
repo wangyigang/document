@@ -6091,13 +6091,336 @@ saveMode(): Append/Overwrite/Error/Ignore
 
 
 
+## SparkStreaming
+
+spark Streaming 用于流式处理的数据,支持多种数据源：kafka，Flume,和套接字等,数据输入后，可以用spark的高度抽象原语：map,reduce, join, window等进行运算，而结果也能保存到很多地方，HDFS，数据库等
+
+##### SparkStreaming架构
+
+![1550918750690](assets/1550918750690.png)
 
 
 
+##### Dstream
+
+###### wordcount案例
+
+```
+
+import org.apache.spark.SparkConf
+import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
+import org.apache.spark.streaming.{Seconds, StreamingContext}
+
+/**
+  *   步骤一：导入pom.xml依赖--sparkStreaming 2.1.11
+  *	  可以把log4j日志级别改为error，容易查看显示信息
+  */
+object StreamWordCountTest {
+  def main(args: Array[String]): Unit = {
+    //初始化sparkconf
+    val conf: SparkConf = new SparkConf().setMaster("local[*]").setAppName("test")
+    //创建sparkstreamingcontext--微批次处理
+    val ssc = new StreamingContext(conf, Seconds(3)) //参数说明: 1. conf配置信息 2.duration持续时间3
+    //采集数据，封装为Dstream--从指定端口获取数据
+    val listenStream: ReceiverInputDStream[String] = ssc.socketTextStream("hadoop102",8888)
+    //处理数据
+    val tupleRDD: DStream[(String, Int)] = listenStream.flatMap(_.split(" ")).map((_,1))
+    //统计结果
+    val resultRDD: DStream[(String, Int)] = tupleRDD.reduceByKey(_+_)
+    //打印结果
+    resultRDD.print()
+
+    //启动流式处理
+    ssc.start()
+    //等待
+    ssc.awaitTermination()
+  }
+}
+```
+
+##### 文件数据源
+
+```scala
+
+object StreamWordCountFromDIr {
+  def main(args: Array[String]): Unit = {
+
+    // 创建Spark配置信息
+    val streamingConf: SparkConf = new SparkConf().setMaster("local[*]").setAppName("StreamingWordCount")
+
+    // 创建流式数据处理上下文对象
+    val ssc: StreamingContext = new StreamingContext(streamingConf, Seconds(5))
+
+    // 监控指定的目录，获取新增文件中的数据,封装为DStream
+    val fileDStream: DStream[String] = ssc.textFileStream("in")
+
+    // 将获取的一行数据分解为单词
+    val wordDStream: DStream[String] = fileDStream.flatMap(_.split(" "))
+
+    // 为了统计方便，将单词转换结构，变成元组数据
+    val tupleDStream: DStream[(String, Int)] = wordDStream.map(word=>(word, 1))
+
+    // 聚合统计结果
+    val resultDStream: DStream[(String, Int)] = tupleDStream.reduceByKey(_+_)
+
+    // 打印结果
+    resultDStream.print()
+
+    // 启动流式处理
+    ssc.start()
+
+    // 等待数据
+    ssc.awaitTermination()
+  }
+}
+
+```
+
+##### 自定义数据源
+
+继承Receiver,并实现onStart, onStop方法定义数据源采集
+
+```scala
+import java.io.{BufferedReader, InputStreamReader}
+import java.net.Socket
+
+import org.apache.spark.SparkConf
+import org.apache.spark.storage.StorageLevel
+import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
+import org.apache.spark.streaming.{Seconds, StreamingContext}
+import org.apache.spark.streaming.receiver.Receiver
+
+import scala.util.control._
+
+object TestCustomerReceiver {
+  def main(args: Array[String]): Unit = {
+
+    //使用自定义接收器采集数据
+    val conf: SparkConf = new SparkConf().setMaster("local[*]").setAppName("test")
+    val ssc = new StreamingContext(conf, Seconds(5))
+    //创建自定义reciever
+    val lineStream: ReceiverInputDStream[String] = ssc.receiverStream(new CustomerReceiver("hadoop102",8888))
+    //进行单词映射成元祖(word, 1)
+    val splitStream: DStream[String] = lineStream.flatMap(_.split(" "))
+    val mapStream: DStream[(String, Int)] = splitStream.map((_,1))
+    //进行累加
+    val wordAndCountStreams: DStream[(String, Int)] = mapStream.reduceByKey(_+_)
+    //打印
+    wordAndCountStreams.print()
+    //启动sparkstreamingContext
+    ssc.start()
+    //等待
+    ssc.awaitTermination()
+  }
+}
+class CustomerReceiver(host: String, port:Int) extends Receiver[String](StorageLevel.MEMORY_ONLY){
+  var breakFlat : Boolean = true
+
+  //自定义函数
+  def receiver(): Unit ={
+    //监听端口
+    var socket = new Socket(host,port)
+    //获取数据
+    val reader = new BufferedReader(new InputStreamReader(socket.getInputStream(),"UTF-8"))
+    var line = ""
+    Breaks.breakable{
+      while ((line = reader.readLine()) != null) {
+        if ("==".equals(line)) {
+          Breaks.break()
+        }
+        store(line)
+      }
+    }
+    //改变标志位
+    breakFlat=false
+    socket.close()
+    reader.close()
+  }
+
+  //起始时
+  override def onStart(): Unit = {
+    new Thread("sock"){
+      override def run(): Unit = {
+        while(breakFlat){
+          receiver()
+
+          Thread.sleep(1000)
+        }
+      }
+    }.start()
+  }
+  //结束时
+  override def onStop(): Unit = {
+    breakFlat= false;
+  }
+}
+```
+
+##### kafka数据源
+
+###### 导入依赖
+
+```xml
+    <groupId>org.apache.spark</groupId>
+    <artifactId>spark-streaming-kafka-0-8_2.11</artifactId>
+    <version>2.1.1</version>
+</dependency>
+<dependency>
+    <groupId>org.apache.kafka</groupId>
+    <artifactId>kafka-clients</artifactId>
+    <version>0.11.0.2</version>
+</dependency>
+```
+
+###### code
+
+```scala
+import kafka.serializer.StringDecoder
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.spark.SparkConf
+import org.apache.spark.storage.StorageLevel
+import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
+import org.apache.spark.streaming.kafka.KafkaUtils
+import org.apache.spark.streaming.{Seconds, StreamingContext}
+
+
+//从kafka中采集数据
+object SparkKafkaTest {
+  def main(args: Array[String]): Unit = {
+    //创建sparkconf并初始化ssc
+    var conf = new SparkConf().setMaster("local[*]").setAppName("test")
+    //创建streamingContext
+    val ssc = new StreamingContext(conf, Seconds(5))
+
+    //通过KafkaUtils工具类，进行操作
+    //K--分区
+    val kafkaDS: ReceiverInputDStream[(String, String)] = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
+      ssc,
+      Map(
+        "zookeeper.connect" -> "hadoop102:2181",
+        ConsumerConfig.GROUP_ID_CONFIG -> "spark",
+        ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG -> "org.apache.kafka.common.serialization.StringDeserializer",
+        ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG -> "org.apache.kafka.common.serialization.StringDeserializer"
+      ),
+      Map(
+        "ss" -> 3
+      ),
+      StorageLevel.MEMORY_ONLY //导包
+    )
+    val mapDS: DStream[(String, Int)] = kafkaDS.map(t => {
+      (t._2, 1)
+    })
+    val resultDS: DStream[(String, Int)] = mapDS.reduceByKey(_+_)
+    //打印结果
+    resultDS.print()
+    //启动流式处理
+    ssc.start()
+    //等待数据
+    ssc.awaitTermination()
+  }
+}
+```
+
+```
+kafka命令：
+//创建主题
+bin/kaftopics.sh --zookeeper hadoop102:2181 --create --replication-factor 2 --partitions 3 --topic ss
+//查看主题
+bin/kaftopics.sh --zookeeper hadoop102:2181 --list
+//生产消息
+ bin/kafka-console-producer.sh --broker-list hadoop102:9092 --topic ss
+```
+
+##### 有状态转换操作
+
+​	无状态转换是分别应用到每个RDD上，例如，reduceByKey()会规约每个时间区内的数据，但不会规约不同区间之间的数据
+
+###### UpdateStateByKey
+
+用于记录历史记录，当需要跨批次维护状态时，可以使用updateStateByKey()提供对一个状态变量的访问
+
+**使用updateStateByKey需要对检查点目录进行配置，会使用检查点checkpoint保存状态**
+
+```scala
+
+import org.apache.spark.SparkConf
+import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
+import org.apache.spark.streaming.{Seconds, StreamingContext}
+
+/**
+  * 注意需要start()
+  * 注意点2： 当前需求中不需要进行扁平化 flatmap
+  */
+object WordCountFromDIR {
+  def main(args: Array[String]): Unit = {
+    val conf: SparkConf = new SparkConf().setMaster("local[*]").setAppName("test")
+    //设置streamingcontext
+    val ssc = new StreamingContext(conf,Seconds(5))
+
+    //设置检查点
+    ssc.sparkContext.setCheckpointDir("input")
+
+    //从指定端口采集数据，封装为DStream，但是需要保留每一次统计结果
+    val sockSM: ReceiverInputDStream[String] = ssc.socketTextStream("hadoop102", 8888)
+    //拆分为单词
+
+    val mapDStream: DStream[(String, Int)] = sockSM.map((_,1))
+
+    //注意写明类型
+    val resultDStream: DStream[(String, Int)] = mapDStream.updateStateByKey((item: Seq[Int], opt: Option[Int]) => {
+      var total: Int = item.sum + opt.getOrElse(0)
+      Option(total)
+    })
+    //打印输出信息
+    resultDStream.print()
+    //注意开启
+    ssc.start()
+    //等待
+    ssc.awaitTermination()
+  }
+}
+```
+
+##### 滑动窗口 Window Operations
+
+  通过设置窗口的大小和滑动窗口的间隔动态获取当前Steaming的状态，
+
+> 所有基于窗口的操作都需要两个步骤，分别为窗口时长及滑动步长，两者都必须是StreamContext的批次间隔的整数倍
 
 
 
+```scala
 
+import org.apache.spark.SparkConf
+import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
+import org.apache.spark.streaming.{Seconds, StreamingContext}
+
+object WordCountWindow {
+  def main(args: Array[String]): Unit = {
+    //创建conf
+    val conf: SparkConf = new SparkConf().setMaster("local[*]").setAppName("WordCountWindow")
+    //创建streamingcontext
+    val ssc = new StreamingContext(conf, Seconds(5))
+
+    //设置checkpoint--窗口函数需要设置检查点，进行保存数据
+    ssc.sparkContext.setCheckpointDir("input")
+
+    //从指定的端口获取数据
+    val sockStream: ReceiverInputDStream[String] = ssc.socketTextStream("hadoop102",8888)
+    //获取一行并转化成 word 1
+    val tupleStream: DStream[(String, Int)] = sockStream.flatMap(_.split(" ")).map((_,1))
+    //聚合统计结果
+    val window: DStream[(String, Int)] = tupleStream.reduceByKeyAndWindow((s:Int, i:Int)=> s+i,Seconds(15),Seconds(5))
+    //打印结果
+    window.print()
+    //开始
+    ssc.start()
+    //等待
+    ssc.awaitTermination()
+  }
+}
+//nc -lk 8888
+```
 
 
 

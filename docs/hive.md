@@ -2591,9 +2591,9 @@ hive (default)> dfs -du -h /user/hive/warehouse/log_orc_snappy/ ;
 
 在实际的项目开发当中，hive表的数据存储格式一般选择：orc或parquet。压缩方式一般选择snappy，lzo。
 
-### **企业级调优**
+### 企业级调优
 
-#### **Fetch抓取**
+#### Fetch抓取
 
 Fetch抓取是指，Hive中对某些情况的查询可以不必使用MapReduce计算。例如：SELECT * FROM employees;在这种情况下，Hive可以简单地读取employee对应的存储目录下的文件，然后输出查询结果到控制台。
 
@@ -2623,7 +2623,7 @@ hive (default)> select ename from emp;
 
 hive (default)> select ename from emp limit 3;
 
-## **本地模式**
+## 本地模式
 
 大多数的Hadoop Job是需要Hadoop提供的完整的可扩展性来处理大数据集的。不过，有时Hive的输入数据量是非常小的。在这种情况下，为查询触发执行任务消耗的时间可能会比实际job的执行时间要多的多。对于大多数这种情况，Hive可以通过本地模式在单台机器上处理所有的任务。对于小数据集，执行时间可以明显被缩短。
 
@@ -2649,9 +2649,9 @@ hive (default)> select * from emp cluster by deptno;
 
 Time taken: 20.09 seconds, Fetched: 14 row(s)
 
-## **表的优化**
+## 表的优化
 
-### **小表、大表Join**
+### 小表、大表Join
 
 将key相对分散，并且数据量小的表放在join的左边，这样可以有效减少内存溢出错误发生的几率；再进一步，可以使用map join让小的维度表（1000条以下的记录条数）先进内存。在map端完成reduce。
 
@@ -2709,7 +2709,7 @@ Time taken: 34.196 seconds
 
 No rows affected (26.287 seconds)
 
-### **大表Join大表**
+### 大表Join大表
 
 1．空KEY过滤
 
@@ -2795,9 +2795,9 @@ select n.* from nullidtable n full join ori o on
 
 case when n.id is null then concat('hive', rand()) else n.id end = o.id;
 
-结果：如图6-14所示，可以看出来，消除了数据倾斜，负载均衡reducer的资源消耗 
+可以看出来，消除了数据倾斜，负载均衡reducer的资源消耗 
 
-### **MapJoin（小表join大表）**
+### MapJoin(小表join大表)
 
 如果不指定MapJoin或者不符合MapJoin的条件，那么Hive解析器会将Join操作转换成Common Join，即：在Reduce阶段完成join。容易发生数据倾斜。可以用MapJoin把小表全部加载到内存在map端进行join，避免reducer处理。
 
@@ -2833,7 +2833,7 @@ insert overwrite table jointableselect b.id, b.time, b.uid, b.keyword, b.url_ran
 
 Time taken: 24.315 seconds
 
-### **Group By**
+### Group By
 
 默认情况下，Map阶段同一Key数据分发给一个reduce，当一个key数据过大时就倾斜了。
 
@@ -2895,7 +2895,7 @@ deptno
 
 30
 
-### **Count(Distinct) 去重统计**
+### Count(Distinct) 去重统计
 
 ​	数据量小的时候无所谓，数据量大的情况下，由于COUNT DISTINCT的全聚合操作，即使设定了reduce task个数，set mapred.reduce.tasks=100；hive也只会启动一个reducer。，这就造成一个Reduce处理的数据量太大，导致整个Job很难完成，**一般COUNT DISTINCT使用先GROUP BY再COUNT的方式替换：**
 
@@ -2987,7 +2987,7 @@ join (select id from ori where id <= 10 ) o on b.id = o.id;
 
 Time taken: 30.058 seconds, Fetched: 100 row(s)
 
-### **动态分区调整**
+### 动态分区调整
 
 **自动将最后一个字段当做分区字段进行分配**
 
@@ -3136,13 +3136,15 @@ SET hive.merge.smallfiles.avgsize = 16777216;
 
 ### **合理设置Reduce数**
 
-1. 调整reduce个数方法一
+设置reduce个数方式
 
 ```
 1.每个Reduce处理的数据量默认是256MB
-	hive.exec.reducers.bytes.per.reducer=256000000
+hive.exec.reducers.bytes.per.reducer=256000000
+
 2. 每个任务最大的reduce数，默认为1009
 	hive.exec.reducers.max=1009
+	
 3.计算reducer数的公式
 	N=min(参数2，总输入数据量/参数1)
 ```
@@ -3166,18 +3168,17 @@ set mapreduce.job.reduces = 15;
 
 ## 并行执行
 
-是什么：
+> 是什么：
+>
+> 一个job会包含很多阶段，这些阶段可能不是互相依赖，可以并行执行
 
-​	
-
-​	通过设置参数hive.exec.parallel值为true，就可以开启并发执行**。不过，在共享集群中，需要注意下，如果job中并行阶段增多，那么集群利用率就会增加。
+> 怎么做：设置 hive.exec.parallel值为true
+>
 
 ```
 set hive.exec.parallel=true;              //打开任务并行执行
 set hive.exec.parallel.thread.number=16;  //同一个sql允许最大并行度，默认为8。
 ```
-
-当然，得是在系统资源比较空闲的时候才有优势，否则，没资源，并行也起不来。
 
 ## 严格模式
 
