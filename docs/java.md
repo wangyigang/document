@@ -3107,3 +3107,93 @@ public class TestTransaction {
 }
 ```
 
+
+
+
+
+## JUC
+
+##### 线程安全问题
+
+ 多线程并发执行时，对共享内存中共享对象的属性进行修改所导致的数据冲突问题
+
+线程中，堆是共享的，其他(堆和方法区)是不共享的
+
+![1551183089838](assets/1551183089838.png)
+
+```java
+public class TestThread {
+    public static void main(String[] args) {
+        Mydata m = new Mydata();
+        Thread t1 = new Thread(() -> {
+            for (int i=0; i<100; i++){
+                m.name = "wangyigang";
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println(m.name);
+            }
+        });
+        Thread t2 = new Thread(()->{
+            m.name = "dilireba";
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            System.out.println(m.name);
+
+        });
+        t1.start();
+        t2.start();
+        System.out.println("main...");
+    }
+}
+
+class Mydata {
+    public String name = "";
+}
+```
+
+##### wait 和sleep的区别
+
+```
+相同点： sleep和wait都会导致当前线程进入阻塞状态，被挂起
+sleep : 静态方法
+		sleep不会释放锁，
+wait: 非静态方法
+	   wait会释放锁，需要通过notify或notifyall()唤醒，
+```
+
+
+
+##### ​虚假唤醒问题        
+
+wait方法没有满足条件也被唤醒,
+
+​	四个线程中，两个作为生产者(1, 3)，两个作为消费者(2,4)，1号生产者++, 挂起后，3号线程抢占到，满足条件，被挂起，3号线程代码停止在wait处，1号线程又抢占到资源，满足条件，被wait()挂起，然后3号又抢占到资源，此时，继续从wait()代码处继续向下执行，所以代码出现问题。
+
+解决方法： while 代替if
+
+```
+
+```
+
+
+
+
+
+
+
+
+
+## 其他
+
+#####  java -cp
+
+```
+指定类运行所依赖的类路径
+```
+
