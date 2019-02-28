@@ -2208,6 +2208,46 @@ AIO：异步IO
 
 
 
+### shuffle解析
+
+##### Shuffle核心要点：
+
+ShuffleMapStage 与 ResultStage
+
+##### HashShuffle解析
+
+###### 未优化的HashShuffle
+
+shuffle过程中会产生多个小文件， 小文件个数= task个数*最终task个数, 所以导致整体性能低
+
+###### 优化后的HashShuffle
+
+优化后， 每个Executor生成一个文件， 生成的小文件比以前的少很多，但是效率还是不够好
+
+##### Sortshuffle
+
+只生成两个文件，一个Data，一个Index, 要求进行排序
+
+###### bypass机制
+
+由于排序会造成性能上的损耗，所以，默认情况下task数量小于200不进行排序
+
+```
+spark.shuffle.sort. bypassMergeThreshold参数的值时（默认为200）
+```
+
+
+
+#### 内存管理
+
+![1551264775092](assets/1551264775092.png)
+
+动态内存管理： Storage和Execution 两者之间的内存自动进行管理
+
+
+
+
+
 ## 其他
 
 Redis Lab: 从Redis中读写数据，第三方工具

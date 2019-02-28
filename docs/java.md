@@ -2620,105 +2620,6 @@ java.lang.Class也是一个类，但十分特殊，用来表示java中类型本�
 
 
 
-#### JVM运行与类加载全过程
-
-​	一个运行时的Java虚拟机(JVM)负责运行一个Java程序
-
-当启动一个Java程序时，一个虚拟机实例诞生，当程序关闭退出，这个虚拟机实例也随之小王
-
-如果在同一台计算机上同时运行多个Java程序，将得到多个Java虚拟机实例，每个Java程序都运行在自己的JVM虚拟机实例中
-
-###### 以下几种情况，Java虚拟机将会结束生命周期
-
-1. 执行了System.exit() 方法
-2. 程序正常执行结束
-3. 程序在执行过程中遇到了异常或错误而异常终止
-4. 由于操作系统出现错误而导致Java虚拟机进程终止
-
-###### 类加载过程
-
-> 分为三个步骤： 装载Load ，链接Link，初始化Initialize 
-
-![img](assets/1228818-20180112182532441-1999011931.jpg)
-
-- 装载：将class字节码文件加载到内存中，并将静态数据转换成方法区的运行时数据结构，然后生成一个代表这个类的java.lang.Class对象，作为方法区中的类数据的访问入口(引用地址),所有需要访问和使用类数据只能通过这个CLass对象，这个加载的过程需要类加载器参与
-
-- 链接： 将java类的字节码合并到JVM的运行状态之中的过程
-
-  - 验证：确保加载的类信息符合JVM规范
-  - 准备：正式为类变量(static)分配内存并设置类变量默认初始值的阶段，这些内存都将在方法区中进行分配
-  - 解析：虚拟机常量池内的符号引用(常量名)替换为直接引用(地址)的过程
-
-- 初始化：
-
-  - 执行类构造器<clinit>()方法的过程，若发现父类还未初始化，会先初始化父类
-  - 保证类的<clinit>()方法在多线程环境中被正确枷锁和同步
-
-  
-
-##### 类加载器
-
-###### 作用： 
-
-​	类加载的作用：将class文件字节码内容加载到内存中，并将这些静态数据转换成方法区的运行时数据结构，然后在堆中生成一个代表这个类的java.lang.Class对象，作为方法区中类数据的访问入口
-
-类缓存：标准的JavaSE类加载器可以按要求查找类，但一旦某个类被加载到类加载器中，它将维持加载（缓存）一段时间。不过JVM垃圾回收机制可以回收这些Class对象。
-
-###### 类加载器的层次结构(树状结构)
-
-1. 引导类加载器(bootstrap class loader)
-
-   - 用来加载Java的核心库(JAVA_HOME/jre/lib/rt.jar) 
-   - 加载扩展类和应用程序类加载器，并制定为他们的父类加载器
-2. 扩展类加载器(extensions class loader)
-
-   - 用来加载Java的扩展库(JAVA_HOME/jre/ext/*.jar)，java虚拟机的实现会提供一个扩展库目录，类加载器会在这个目录中查找并加载Java类
-3. 应用程序类加载器(application class loader)
-   - 负责加载自己编写的类classpath下
-
-4. 自定义类加载器
-   - 开发人员可通过继承java.lang.ClassLoader类的方式实现自己的类加载器，以满足特殊的需求
-
-![1549069277752](assets/1549069277752.png)
-
-###### 类加载器的代理模式
-
-代理模式： 交给其他类加载器来加载指定的类
-
-**双亲委托机制**： 某个特定的类加载器在接到加载类的请求时，首先将任务委托给父加载器，直到委托给最高的引导类加载器，如果引导类加载器可以完成加载任务，就成功返回，如果不能完成，委托给扩展类加载器，直到自己。
-
-**目的**： 是为了保证java核心库的类型安全，保证类加载器不会优先加载自己的类，导致系统安全
-
-```
-验证方法之一：
-//自己写一个java.lang.String
-package java.lang;
-
-public class String {
-}
-package com.reflection.classloader;
-
-public class TestClassLoader {
-	public static void main(String[] args) throws Exception {
-		String str = new String();
-		ClassLoader classLoader = str.getClass().getClassLoader();
-		System.out.println(classLoader);//null  引导类加载器
-		//说明还是加载的核心类库中的java.lang.String,不是你自己写的String
-		System.out.println(str.getClass().getMethod("substring", int.class));
-	}
-}
-//验证方法二：
-package java.lang;
-
-public class String {
-	public static void main(String[] args)throws Exception {
-		String str = new String();
-		//运行错误: 在类 java.lang.String 中找不到 main 方法, 请将 main 方法定义为:
-		//	   public static void main(String[] args)
-	}
-}
-```
-
 
 
 #### GC与垃圾回收
@@ -3117,7 +3018,7 @@ public class TestTransaction {
 
  多线程并发执行时，对共享内存中共享对象的属性进行修改所导致的数据冲突问题
 
-线程中，堆是共享的，其他(堆和方法区)是不共享的
+线程中，栈不共享，其他(堆和方法区)共享
 
 ![1551183089838](assets/1551183089838.png)
 
@@ -3175,17 +3076,771 @@ wait方法没有满足条件也被唤醒,
 
 ​	四个线程中，两个作为生产者(1, 3)，两个作为消费者(2,4)，1号生产者++, 挂起后，3号线程抢占到，满足条件，被挂起，3号线程代码停止在wait处，1号线程又抢占到资源，满足条件，被wait()挂起，然后3号又抢占到资源，此时，继续从wait()代码处继续向下执行，所以代码出现问题。
 
-解决方法： while 代替if
+解决方法： ==while 代替if==
 
+```java
+public class TestProducerConsumer {
+    public static void main(String[] args) {
+        ShareData sd = new ShareData();
+        Thread t1 = new Thread(() -> {
+            sd.product();
+        });
+
+        Thread t2 = new Thread(()->{
+           sd.consumer();
+        });
+
+        Thread t3 = new Thread(() -> {
+            sd.product();
+        });
+
+        Thread t4 = new Thread(()->{
+            sd.consumer();
+        });
+
+        t1.start();
+        t2.start();
+        t3.start();
+        t4.start();
+
+        try {
+            t1.join();
+            t2.join();
+            t3.join();
+            t4.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("main count="+sd.count);
+//        System.out.println("main....");
+    }
+}
+class ShareData{
+    public int count =0;
+    //生产者
+    public synchronized  void product(){
+        while(count ==1){
+            try {
+                wait();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        //生产
+        count++;
+        System.out.println("product count="+count);
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        notifyAll();
+    }
+    //消费者
+    public synchronized  void consumer(){
+        //当结果没有时，就进行等待
+        while(count ==0){
+            try {
+                wait();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        //消费
+        count--;
+        System.out.println("consumer count="+count);
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        notifyAll();
+    }
+}
+```
+
+
+
+##### 系统内存模型
+
+![1551279298282](assets/1551279298282.png)
+
+![1551279315523](assets/1551279315523.png)
+
+```
+工作内存中会缓存主存中的变量，所以不能及时更新主存中的数据
+解决方案：
+1.使用同步代码块 synchronized
+2. 使用volatile
+3. 线程休眠一小段时间，让数据进行同步
+```
+
+##### 线程八种使用情况
+
+```
+类锁和对象锁两个是不同的
+要看类锁或对象锁是否是同一个，如果有一个先获取锁以后，另一个无法获取，执行等待
+```
+
+
+
+##### Atomic
+
+```
+//源码中使用了CAS乐观锁的方式， 底层实现的方式是cas技术，do while() 判断， do 中先获取原始数据， while()中comandswap()方法进行比较，
+
+AtomicReference<v> 是一个抽象，可以封装任意类型的数据
 ```
 
 ```
+class ShareData{
+    public AtomicInteger count = new AtomicInteger();
+
+    public void produce(){
+        //增加
+        count.getAndIncrement();
+    }
+    public void consume(){
+        //减少
+        count.getAndDecrement();
+    }
+}
+```
+
+##### condition--条件变量
+
+```
+/*
+    注意点: 条件变量的signalall 需要卸载解锁前面， 锁后面，会爆出异常
+ */
+public class Thread_JUCTest {
+    public static void main(String[] args) throws InterruptedException {
+        ShareData02 sd04 = new ShareData02();
+
+        // 生产者
+        Thread t1 = new Thread(()->{
+            for ( int i = 0; i < 10; i++ ) {
+                sd04.produce();
+
+                //System.out.println( "count produce = " + sd04.count );
+            }
+        });
+
+        // 消费者
+        Thread t2 = new Thread(()->{
+            for ( int i = 0; i < 10; i++ ) {
+                sd04.consume();
+                //System.out.println( "count consume = " + sd04.count );
+            }
+        });
+
+        t1.start();
+        t2.start();
+
+        t1.join();
+        t2.join();
+
+        System.out.println( "final = " + sd04.count );
+        System.out.println( "main方法执行完毕" );
+    }
+}
+
+class ShareData02 {
+    //可重入锁
+    ReentrantLock lck = new ReentrantLock();
+    //条件变量
+    Condition cond = lck.newCondition();
+    public int count = 0;
+
+    //生产数据
+    public void produce() {
+        lck.lock();
+        while(count==1){
+            try {
+                //await() 进行等待
+                cond.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        count++;
+
+        cond.signalAll();//通知所有人
+        lck.unlock();
+        //通知
+    }
+
+    public void consume() {
+        lck.lock();
+
+        while(count==0){
+            try {
+                cond.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        count--;
+        cond.signalAll();
+        //解锁
+        lck.unlock();
+    }
+}
+```
+
+##### 公平锁
+
+```
+public class Thread_JUCTest02 {
+    public static void main(String[] args) throws InterruptedException {
+        ShareData02 sd10 = new ShareData02();
+
+        for ( int i = 1; i <= 2; i++ ) {
+            new Thread(()-> {
+                sd10.print();
+            }, "线程"+i).start();
+        }
+    }
+
+}
+
+class ShareData02 {
+    //公平锁 --底层好像通过队列方式获取线程, 通过aqs 链表实现的同步队列方式获取线程，然后通过cas乐观锁方式
+    ReentrantLock lock = new ReentrantLock(true);
+
+    public void print() {
+        while ( true ) {
+            lock.lock();
+            System.out.println( Thread.currentThread().getName() + "-打印消息" );
+            lock.unlock();
+        }
+    }
+}
+```
 
 
 
+##### 循环打印
+
+```java
+
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+
+public class Thread_JUCLoop {
+    public static void main(String[] args) {
+        ShareData12 sd12 = new ShareData12();
+
+        Thread t1 = new Thread(()-> {
+            for (int i = 1; i <= 3; i++) {
+                sd12.print5();
+            }
+
+        });
+
+        Thread t2 = new Thread(()-> {
+            for (int i = 1; i <= 3; i++) {
+                sd12.print10();
+            }
+
+        });
+
+        Thread t3 = new Thread(()-> {
+            for (int i = 1; i <= 3; i++) {
+                sd12.print15();
+            }
+
+        });
+
+        t1.start();
+        t2.start();
+        t3.start();
+    }
+}
+
+/**
+ * 线程接力的循环打印
+ */
+class ShareData12{
+    private ReentrantLock lck = new ReentrantLock();
+    private Condition cond1 =  lck.newCondition() ;
+    private Condition cond2 =  lck.newCondition() ;
+    private Condition cond3 =  lck.newCondition() ;
+
+    private int printNum = 5;
+
+    public void print5(){
+        lck.lock();
+
+        while(printNum != 5){
+            try {
+                cond1.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        //业务逻辑
+        for(int i=1; i<=5;i++){
+            System.out.println("i="+i);
+        }
+        //先改变
+        printNum = 10;
+        //在通知
+        cond2.signal();
+        //再释放锁
+        lck.unlock();
+    }
+
+    public void print10(){
+        lck.lock();
+        while(printNum !=10){
+            try {
+                cond2.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        //业务逻辑
+        for(int i=6; i<=10; i++){
+            System.out.println("i="+i);
+        }
+        //改变值
+        printNum =15;
+        cond3.signal();
+        //释放锁
+        lck.unlock();
+    }
+    public void print15() {
+
+        lck.lock();
+
+        while ( printNum != 15 ) {
+            try {
+                cond3.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        for ( int i = 11; i <= 15; i++ ) {
+            System.out.println( "i = " + i );
+        }
+
+        printNum = 5;
+
+        cond1.signal();
+
+        lck.unlock();
+    }
+}
+```
+
+##### 读写锁
+
+写写互斥
+
+读写互斥
+
+```
+
+public class Thread_JUCReadWriteTest {
+    public static void main(String[] args) {
+        ReadWriteData data = new ReadWriteData();
+
+        new Thread(()-> {
+            data.write("Hello Thread!!!");
+        }).start();
+
+        for ( int i = 1; i <= 20; i++ ) {
+            new Thread(()-> {
+                data.read();
+            }, "学生"+i).start();
+        }
+    }
+}
+class ReadWriteData{
+    public  String content = "";
+
+    private ReentrantReadWriteLock rwlck = new ReentrantReadWriteLock();
+
+    public  void write(String s){
+        rwlck.writeLock().lock(); //写锁锁定
+
+        content = s;
+        System.out.println(content);
+
+        rwlck.writeLock().unlock(); //解锁
+    }
+    public void read(){
+        rwlck.readLock().lock();
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        System.out.println(Thread.currentThread().getName()+" 读取:"+content);
+        rwlck.readLock().unlock();
+    }
+}
+```
+
+##### 工具类
+
+###### countdown
+
+```
+   public static void main(String[] args) throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(5);
+
+        for(int i=1; i<=5; i++){
+            new Thread(()->{
+                System.out.println(Thread.currentThread().getName()+"打扫完成");
+                latch.countDown();
+            }, "学生"+i).start();
+        }
+        latch.await();
+        System.out.println("老师锁门");
+    }
+```
+
+###### 线程栅栏
+
+```
+ public static void main(String[] args) {
+        //线程计数器，线程栅栏
+        CyclicBarrier cb = new CyclicBarrier(5,()->{
+            System.out.println("人员到齐，开始开会...");
+        });
+
+        for(int i=0; i<5; i++){
+            new Thread(()->{
+                System.out.println(Thread.currentThread().getName()+"到达会议室");
+
+                try {
+                    cb.await();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (BrokenBarrierException e) {
+                    e.printStackTrace();
+                }
+            },"人员"+i).start();
+        }
+    }
+```
+
+###### 信号量
+
+```
+public class Thread_JUCTools3 {
+    public static void main(String[] args) {
+        Semaphore s = new Semaphore(3);
+
+        for(int i=1; i<=6; i++){
+            new Thread(()->{
+                try {
+                    //抢占资源
+                    s.acquire();
+                    System.out.println(Thread.currentThread().getName()+">>>进入");
+                    Thread.holdsLock(new Random().nextInt(1000));
+                    System.out.println(Thread.currentThread().getName()+"<<<退出");
+
+                    //释放资源
+                    s.release();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            },"car"+i).start();
+        }
+    }
+}
+```
+
+#### 总结
+
+##### 创建线程的几种方式
+
+###### Callable:
+
+```
+public class Thread_JUCCallableTest {
+    public static void main(String[] args) throws ExecutionException, InterruptedException {
+        MyCallable call = new MyCallable();
+        FutureTask<String> task = new FutureTask<>(call);
+
+        Thread t = new Thread(task);
+        t.start();
+
+        String result = task.get();
+        System.out.println(result);
+        System.out.println("main执行结束...");
+    }
+}
+
+class MyCallable implements Callable<String>{
+    @Override
+    public String call() throws Exception {
+        System.out.println("call...");
+        return "thread";
+    }
+}
+```
+
+###### 线程池方式创建线程
+
+```java
+public class Thread_JUCThreadPoolTest {
+    public static void main(String[] args) {
+        //创造单一线程
+        ExecutorService threadPool = Executors.newSingleThreadExecutor();// 创造单一线程
+        //newFixedThreadPool创建指定数量线程池
+        threadPool = Executors.newFixedThreadPool(10);
+        //创建自定义线程池
+        threadPool = Executors.newCachedThreadPool();
+
+        //功能
+        for (int i = 1; i <= 20; i++) {
+            threadPool.submit(new Callable<String>() {
+                @Override
+                public String call() throws Exception {
+                    System.out.println(Thread.currentThread().getName()+"执行");
+                    return "call";
+                }
+            });
+
+        }
+
+        //关闭线程池
+        threadPool.shutdown();
+    }
+}
+
+```
+
+###### callable和runnable区别
+
+```
+1. callable 
+	callable支持泛型, runnable不支持泛型
+	callable方法由返回值 , runable没有返回值
+	callable可以抛出异常, runnable只能抛出运行时异常
+```
+
+###### 线程安全容器
+
+```java
+public class Thread_JUCContainer {
+    public static void main(String[] args) {
+        Vector<String> vec = new Vector<>();
+//        Collections底层使用锁的方式保证线程安全，synchronized 悲观锁的方式
+        List<String> strList = Collections.synchronizedList(new ArrayList<>());
+        Map<String, Integer> integerMap = Collections.synchronizedMap(new HashMap<String, Integer>());
+        Set<String> set = Collections.synchronizedSet(new HashSet<String>());
+        //使用JUC --写时复制--使用可重入锁方式ReentrantLock--写数据时，进行复制，并且容器个数+1
+        //读数据时，没有加锁，读的时候读取原来的数据
+        //list
+        CopyOnWriteArrayList list = new CopyOnWriteArrayList();
+        //set
+        CopyOnWriteArraySet<String> arraySet = new CopyOnWriteArraySet<>();
+        //map
+        //利用分段技术和锁技术 分段锁机制
+        ConcurrentHashMap map = new ConcurrentHashMap();
+    }
+}
+
+```
 
 
 
+## JVM
+
+JVM是运行在操作系统之上的，它与硬件没有直接的交互
+
+
+
+##### JVM运行与类加载全过程
+
+​	一个运行时的Java虚拟机(JVM)负责运行一个Java程序
+
+当启动一个Java程序时，一个虚拟机实例诞生，当程序关闭退出，这个虚拟机实例也随之小王
+
+如果在同一台计算机上同时运行多个Java程序，将得到多个Java虚拟机实例，每个Java程序都运行在自己的JVM虚拟机实例中
+
+###### 以下几种情况，Java虚拟机将会结束生命周期
+
+1. 执行了System.exit() 方法
+2. 程序正常执行结束
+3. 程序在执行过程中遇到了异常或错误而异常终止
+4. 由于操作系统出现错误而导致Java虚拟机进程终止
+
+###### 类加载过程
+
+> 分为三个步骤： 装载Load ，链接Link，初始化Initialize 
+
+![img](assets/1228818-20180112182532441-1999011931.jpg)
+
+- 装载：将class字节码文件加载到内存中，并将静态数据转换成方法区的运行时数据结构，然后生成一个代表这个类的java.lang.Class对象，作为方法区中的类数据的访问入口(引用地址),所有需要访问和使用类数据只能通过这个CLass对象，这个加载的过程需要类加载器参与
+
+- 链接： 将java类的字节码合并到JVM的运行状态之中的过程
+
+  - 验证：确保加载的类信息符合JVM规范
+  - 准备：正式为类变量(static)分配内存并设置类变量默认初始值的阶段，这些内存都将在方法区中进行分配
+  - 解析：虚拟机常量池内的符号引用(常量名)替换为直接引用(地址)的过程
+
+- 初始化：
+
+  - 执行类构造器<clinit>()方法的过程，若发现父类还未初始化，会先初始化父类
+  - 保证类的<clinit>()方法在多线程环境中被正确枷锁和同步
+
+  
+
+##### 类加载器
+
+###### 作用： 
+
+​	类加载的作用：将class文件字节码内容加载到内存中，并将这些静态数据转换成方法区的运行时数据结构，然后在堆中生成一个代表这个类的java.lang.Class对象，作为方法区中类数据的访问入口
+
+类缓存：标准的JavaSE类加载器可以按要求查找类，但一旦某个类被加载到类加载器中，它将维持加载（缓存）一段时间。不过JVM垃圾回收机制可以回收这些Class对象。
+
+###### 类加载器的层次结构(树状结构)
+
+1. 引导类加载器(bootstrap class loader)
+   - 用来加载Java的核心库(JAVA_HOME/jre/lib/rt.jar) 
+   - 加载扩展类和应用程序类加载器，并制定为他们的父类加载器
+2. 扩展类加载器(extensions class loader)
+   - 用来加载Java的扩展库(JAVA_HOME/jre/ext/*.jar)，java虚拟机的实现会提供一个扩展库目录，类加载器会在这个目录中查找并加载Java类
+3. 应用程序类加载器(application class loader)
+   - 负责加载自己编写的类classpath下
+4. 自定义类加载器
+   - 开发人员可通过继承java.lang.ClassLoader类的方式实现自己的类加载器，以满足特殊的需求
+
+![1549069277752](assets/1549069277752.png)
+
+###### 类加载器的代理模式
+
+代理模式： 交给其他类加载器来加载指定的类
+
+**双亲委托机制**： 某个特定的类加载器在接到加载类的请求时，首先将任务委托给父加载器，直到委托给最高的引导类加载器，如果引导类加载器可以完成加载任务，就成功返回，如果不能完成，委托给扩展类加载器，直到自己。
+
+**目的**： 是为了保证java核心库的类型安全，保证类加载器不会优先加载自己的类，导致系统安全
+
+```
+验证方法之一：
+//自己写一个java.lang.String
+package java.lang;
+
+public class String {
+}
+package com.reflection.classloader;
+
+public class TestClassLoader {
+	public static void main(String[] args) throws Exception {
+		String str = new String();
+		ClassLoader classLoader = str.getClass().getClassLoader();
+		System.out.println(classLoader);//null  引导类加载器
+		//说明还是加载的核心类库中的java.lang.String,不是你自己写的String
+		System.out.println(str.getClass().getMethod("substring", int.class));
+	}
+}
+//验证方法二：
+package java.lang;
+
+public class String {
+	public static void main(String[] args)throws Exception {
+		String str = new String();
+		//运行错误: 在类 java.lang.String 中找不到 main 方法, 请将 main 方法定义为:
+		//	   public static void main(String[] args)
+	}
+}
+```
+
+##### 类加载流程图
+
+![1551335856452](assets/1551335856452.png)
+
+##### 堆的内存分布
+
+![1551335876528](assets/1551335876528.png)
+
+
+
+##### GC
+
+###### gc针对区域
+
+GC主要针对堆和方法区
+
+###### 堆体系结构
+
+```
+JDK1.8之前，称为 新生代，老年代，永久带
+JDK1.8之后，成为，新生代，老年代，元空间
+```
+
+![1551336840495](assets/1551336840495.png)
+
+###### 堆内存调优参数
+
+```
+-Xms1024m -Xmx1024m -XX:+PrintGCDetails
+-XX:+HeapDumpOnOutOfMemoryError //打印输出堆的信息
+```
+
+#### GC算法
+
+##### 判定无用对象算法
+
+```
+定义：从栈中或方法区中没有找到引用的
+算法一： 引用计数法
+	缺点： 循环引用问题
+算法二： 可达性分析法
+	从GCRoot开始，进行查找没有引用的对象
+```
+
+##### 垃圾收集算法
+
+###### 标记清除算法
+
+```
+最基本的收集算法，标记清除算法，算法分为两步，标记，清除
+缺点： 效率不高，容易产生内存碎片
+```
+
+###### 复制算法
+
+```
+为了解决标记清除算法问题，复制算法产生
+IBM研究导致 新生代分为一个Eden 和两个survivor区 (survivor 0 和survivor 1 ) 按照8 ：1 ： 1方式进行划分
+
+1.将非垃圾对象复制到survivor0分区，然后，将eden分区直接清除
+2. 将eden中和survivor0 分区非垃圾对象复制到survivor1分区，然后直接清除Eden和survivor0分区数据, 然后交换survivor0 和survivor1的分区号
+缺点：
+ 复制算法当幸存者较多时，效率会比较低， 不适合老年代使用
+```
+
+标记-整理算法
+
+```
+根据老年代特点，提出标记-整理算法
+步骤： 先进行标记，判断是否是无用对象，然后进行复制移动数据，将内存整理，
+```
+
+###### 分代收集算法
+
+```
+新生代： 复制算法
+老年代： 标记-整理算法
+```
+
+##### 垃圾收集器
+
+```
+Serial收集器最基本的垃圾收集器，单线程
+ParNew收集器： 多线程版本
+CMS: 以获取最短回收停顿时间为目标的收集器
+G1收集器： 面向服务器的；垃圾回收器
+```
 
 
 

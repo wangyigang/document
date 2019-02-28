@@ -2249,7 +2249,10 @@ public class WholeRecordReader extends RecordReader<Text, BytesWritable> {
   collector.close();
   ```
 
-  
+
+
+
+## Shuffle机制
 
 
 #### Shuffle机制
@@ -2932,8 +2935,6 @@ job.setCombinerClass(WordcountCombiner.class);
 job.setCombinerClass(WordcountReducer.class);
 ```
 
-
-
 #### GroupingComparator分组（辅助排序）
 
 > 对Reduce阶段的数据根据某一个或几个字段进行分组。
@@ -2944,6 +2945,195 @@ job.setCombinerClass(WordcountReducer.class);
   自定义类继承WritableComparator
   重写compare()方法
   ```
+
+
+
+#### MapTask工作机制
+
+```
+分为read阶段，map阶段，collect阶段，溢写阶段，Combine阶段
+read阶段：文件切片，，MapTask通过用户编写的RedordReader,从输入文件中解析成key-value值
+map阶段：将解析出的key/value值，按照用户编写的map()函数逻辑，重新生成一系列的key/value
+collect: 将数据写入到环形缓冲区内，环形缓冲区中默认100m, 一侧索引，一侧是数据，当缓冲区到达80%时，进行溢写磁盘
+溢写： 进行多次溢写,溢写前进行快排，达到分区，且分区内有序效果
+Combine阶段： 多次溢写文件进行合并操作，归并排序
+```
+
+#### ReduceTask工作机制
+
+```
+分为copy merger sort reduce阶段
+copy: reduceTask从各个MapTask上拷贝对应分区内的数据
+merge： 对磁盘和内存上的文件进行合并，防止文件过多
+sort: 按照用户reduce()函数输入数据key进行聚集，ReduceTask对所有数据进行一次归并排序
+reduce阶段：reduce()函数将计算结果写在HDFS上
+```
+
+###### 设置reduceTask并行度(个数)
+
+```
+driver驱动类中进行手动设置
+job.setNumReduceTasks(4) //默认是1
+```
+
+
+
+#### OutputFormat数据输出
+
+###### 接口实现类
+
+```
+1. 文本输出TextOutputFormat：系统默认
+2. SequenceFileOutputFormat： 二进制可进行压缩存储
+3. 自定义outputformat：可根据需求进行自定义输出
+```
+
+###### 自定义OutputFormat
+
+作用：实现控制文件的输出路径和输出格式，可以自定义outputFormat
+
+###### 步骤
+
+```
+1. 自定义类继承FileoutputFormat
+2. 改写RecordWriter, 具体改写write()方法
+```
+
+###### code
+
+```
+//Driver
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import java.io.IOException;
+
+/*
+    需求：过滤输入的Log日志，包含wang的网址输出到wang.log， 其他输出到other.log中
+ */
+public class FilterDriver {
+    public static void main(String[] args) throws IOException, ClassNotFoundException, InterruptedException {
+        //获取conf
+        Configuration conf = new Configuration();
+        //获取job
+        Job job = Job.getInstance(conf);
+        //设置job配置
+        job.setMapperClass(FilterMapper.class);
+        job.setReducerClass(FilterReducer.class);
+        job.setOutputFormatClass(FilterOutputFormat.class);
+
+        FileInputFormat.setInputPaths(job, new Path("D:\\input\\website\\website.txt"));
+        FileOutputFormat.setOutputPath(job, new Path("D:\\input\\website\\output"));
+
+        boolean b = job.waitForCompletion(true);
+        System.out.println(b);
+        System.exit(b ? 0 : 1);
+    }
+}
+
+//FilterRecordWriter
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IOUtils;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.RecordWriter;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import java.io.IOException;
+
+public class FileterRecordWriter extends RecordWriter<LongWritable, Text> {
+    FSDataOutputStream wang = null;
+    FSDataOutputStream other  = null;
+
+    //通过job获取Driver中设置的输出路径
+    public void init(TaskAttemptContext job) throws IOException {
+        String path = job.getConfiguration().get(FileOutputFormat.OUTDIR);
+        FileSystem fileSystem = FileSystem.get(job.getConfiguration());
+        //创建fsDataOutputformat
+        wang = fileSystem.create(new Path(path + "/wang.log"));
+        other = fileSystem.create(new Path(path+"/other.log"));
+    }
+
+    //把数据写到文件中
+    @Override
+    public void write(LongWritable key, Text value) throws IOException, InterruptedException {
+        String output = value.toString() + "\r\n";
+        if(output.contains("wang")){
+            wang.write(output.getBytes());
+        }else{
+            other.write(output.getBytes());
+        }
+    }
+
+    //关闭资源
+    @Override
+    public void close(TaskAttemptContext context) throws IOException, InterruptedException {
+        IOUtils.closeStream(wang);
+        IOUtils.closeStream(other);
+    }
+}
+//FilterMapper
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+import java.io.IOException;
+
+//输入输出文件类型
+public class FilterMapper  extends Mapper<LongWritable, Text,LongWritable, Text> {
+    //重写map方法
+    @Override
+    protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+        //以目前的需求来讲，不需要做任何处理，直接写出去即可
+        context.write(key,value); //将每行的内容写出
+    }
+}
+//FilterOutputFormat
+
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.RecordWriter;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import java.io.IOException;
+
+public class FilterOutputFormat  extends FileOutputFormat<LongWritable, Text> {
+
+
+    //实现recordWriter方法
+    @Override
+    public RecordWriter<LongWritable, Text> getRecordWriter(TaskAttemptContext job) throws IOException, InterruptedException {
+
+        FileterRecordWriter record = new FileterRecordWriter();
+        record.init(job);
+        return record;
+    }
+}
+//FilterReducer
+public class FilterReducer extends Reducer<LongWritable, Text, LongWritable, Text> {
+
+    //重写reduce方法
+    @Override
+    protected void reduce(LongWritable key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+        for (Text value : values) {
+            context.write(key, value);
+        }
+    }
+}
+```
+
+
+
+
+
+
 
 ##   Yarn资源调度器
 
@@ -3025,6 +3215,8 @@ FIFO调度器: 队列方式，先进先出
 2. 推测执行完成时刻： 推测时间+任务启动时刻
 3. 备份任务推测完成时刻 = 当前时刻+ 任务平均完成时刻
 ```
+
+
 
 
 
