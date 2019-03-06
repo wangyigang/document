@@ -2252,7 +2252,7 @@ public class WholeRecordReader extends RecordReader<Text, BytesWritable> {
 
 
 
-## Shuffle机制
+### Shuffle机制
 
 
 #### Shuffle机制
@@ -3129,9 +3129,296 @@ public class FilterReducer extends Reducer<LongWritable, Text, LongWritable, Tex
 }
 ```
 
+##### join多种应用
+
+###### reducejoin
+
+```
+
+public class ReduceJoinDriver {
+    public static void main(String[] args) throws IOException, ClassNotFoundException, InterruptedException {
+
+        Configuration conf = new Configuration();
+
+        Job job = Job.getInstance(conf);
+
+        job.setJarByClass(ReduceJoinDriver.class);
+
+        job.setMapperClass(ReducejoinMapper.class);
+
+        job.setReducerClass(ReducejoinReducer.class);
+
+        job.setMapOutputKeyClass(Text.class);
+        job.setMapOutputValueClass(ReduceJoinBean.class);
+
+        job.setOutputKeyClass(NullWritable.class);
+        job.setOutputValueClass(ReduceJoinBean.class);
+
+        FileInputFormat.setInputPaths(job, new Path("D:\\input\\reducejoin"));
+        FileOutputFormat.setOutputPath(job, new Path("D:\\input\\reducejoin\\output"));
+
+        boolean b = job.waitForCompletion(true);
+        System.out.println(b);
+    }
+}
+public class ReduceJoinBean implements Writable {
+    //id pid amount
+    private String id="";
+    private String pid="";
+    private Integer amount=0;
+
+    private String pname="";
+    private String flag="";
+    
+    public void set(String id, String pid, Integer amount, String pname, String flag) {
+        this.id = id;
+        this.pid = pid;
+        this.amount = amount;
+        this.pname = pname;
+        this.flag = flag;
+    }
+
+    @Override
+    public String toString() {
+        return id + '\t' +
+                pname + '\t' +
+                amount;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getPid() {
+        return pid;
+    }
+
+    public void setPid(String pid) {
+        this.pid = pid;
+    }
+
+    public Integer getAmount() {
+        return amount;
+    }
+
+    public void setAmount(Integer amount) {
+        this.amount = amount;
+    }
+
+    public String getPname() {
+        return pname;
+    }
+
+    public void setPname(String pname) {
+        this.pname = pname;
+    }
+
+    public String getFlag() {
+        return flag;
+    }
+
+    public void setFlag(String flag) {
+        this.flag = flag;
+    }
+
+    //序列化
+    @Override
+    public void write(DataOutput out) throws IOException {
+        out.writeUTF(id);
+        out.writeUTF(pid);
+        out.writeInt(amount);
+        out.writeUTF(pname);
+        out.writeUTF(flag);
+    }
+
+    @Override
+    public void readFields(DataInput in) throws IOException {
+        this.id = in.readUTF();
+        this.pid = in.readUTF();
+        this.amount = in.readInt();
+        this.pname = in.readUTF();
+        this.flag = in.readUTF();
+    }
+}
+
+//map 映射，为后面做出准备--
+public class ReducejoinMapper extends Mapper<LongWritable, Text, Text, ReduceJoinBean> {
+    private String filename;
+    private Text k = new Text();
+    private ReduceJoinBean v = new ReduceJoinBean();
+
+    @Override
+    protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+
+        //数据1001	01	1   |    03	格力
+        //过滤非法数据
+        //进行转换
+        String[] split = value.toString().split("\t");
+        if(filename.startsWith("order")){
+            if(split.length <3){
+                //非法数据
+                return ;
+            }
+            //获取数据，进行封装
+            String id = split[0];
+            String pdi = split[1];
+            Integer amount = Integer.parseInt(split[2]);
+            v.set(id, pdi, amount, "", "order");
+
+            k.set(pdi);
 
 
+        }else if( filename.startsWith("pd")){
+            //过滤非法数据
+            if(split.length< 2){
+                return ; //过滤非法数据
+            }
+            //获取封装数据
+            String pid = split[0];
+            String pname = split[1];
+            v.set("", pid, 0, pname, "pid");
+            k.set(pid);
+        }
 
+        context.write(k, v);
+    }
+
+    //setup在每个mapTask任务启动时执行一次
+    //获取数据源
+    @Override
+    protected void setup(Context context) throws IOException, InterruptedException {
+        FileSplit split = (FileSplit) context.getInputSplit();
+        filename = split.getPath().getName();
+    }
+
+    //任务关闭是执行一次
+    @Override
+    protected void cleanup(Context context) throws IOException, InterruptedException {
+        super.cleanup(context);
+    }
+}
+public class ReducejoinReducer extends Reducer<Text, ReduceJoinBean, NullWritable,ReduceJoinBean > {
+    private String name ;
+    @Override
+    protected void reduce(Text key, Iterable<ReduceJoinBean> values, Context context) throws IOException, InterruptedException {
+
+        List<ReduceJoinBean> list = new ArrayList<>();
+        for (ReduceJoinBean value : values) {
+            if(value.getFlag().startsWith("pid")){
+                //获取数据
+                name = value.getPname();
+            }else {
+                ReduceJoinBean bean = new ReduceJoinBean();
+                //通过反射的方式获取数据
+                try {
+                    BeanUtils.copyProperties(bean,value );
+                    list.add(bean);
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                } catch (InvocationTargetException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        for (ReduceJoinBean bean : list) {
+            bean.setPname(name);
+            context.write(NullWritable.get(), bean);
+        }
+    }
+}
+```
+
+###### mapjoin
+
+```
+
+/*
+    注意点：一：缓存路径，缓存路径就是其中那个小文件的路径，就是小文件的存储位置
+            二： 输入文件就是另一个大文件的位置
+ */
+public class MapjoinDriver {
+    public static void main(String[] args) throws IOException, URISyntaxException, ClassNotFoundException, InterruptedException {
+        // 0 根据自己电脑路径重新配置
+        args = new String[]{"D:\\input\\mapjoin\\order.txt", "D:\\input\\mapjoin\\output"};
+
+// 1 获取job信息
+        Configuration configuration = new Configuration();
+        Job job = Job.getInstance(configuration);
+
+        // 2 设置加载jar包路径
+        job.setJarByClass(MapjoinDriver.class);
+
+        // 3 关联map
+        job.setMapperClass(MapjoinMapper.class);
+
+// 4 设置最终输出数据类型
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(NullWritable.class);
+
+        // 5 设置输入输出路径
+        FileInputFormat.setInputPaths(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+
+        // 6 加载缓存数据
+        job.addCacheFile(new URI("file:///D:/input/mapjoin/pd.txt"));
+
+        // 7 Map端Join的逻辑不需要Reduce阶段，设置reduceTask数量为0
+        job.setNumReduceTasks(0);
+
+        // 8 提交
+        boolean result = job.waitForCompletion(true);
+        System.out.println(result);
+    }
+}
+public class MapjoinMapper extends Mapper<LongWritable, Text, Text,NullWritable> {
+    private Map<String, String> m = new HashMap<>();
+
+    private Text k =new Text();
+
+    @Override
+    protected void setup(Context context) throws IOException, InterruptedException {
+        //将map进行缓存到内存中
+        URI[] cacheFiles = context.getCacheFiles();
+        String path = cacheFiles[0].getPath().toString();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(path), "UTF-8"));
+
+        String line;
+        while(StringUtils.isNotEmpty(line=reader.readLine())){
+            //切割
+            String[] split = line.split("\t");
+            m.put(split[0], split[1]);
+        }
+        //读完后
+        reader.close();
+    }
+
+    @Override
+    protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+        //获取一行
+        String line = value.toString();
+
+        //获取
+        String[] split = line.split("\t");
+
+        //获取产品Id
+        String pid = split[1];
+
+        //获取商品名称
+        String name = m.get(pid);
+
+        //拼接字符串
+        k.set(line+"\t" + name);
+        //写出
+        context.write(k, NullWritable.get());
+    }
+}
+
+```
 
 
 

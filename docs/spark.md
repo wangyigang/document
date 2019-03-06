@@ -1,4 +1,4 @@
-# Spark
+## Spark概述
 
 > spark定义：Spark是一个基于内存，快速，通用，可扩展的数据搜索引擎
 
@@ -2250,13 +2250,11 @@ spark.shuffle.sort. bypassMergeThreshold参数的值时（默认为200）
 
 ## 其他
 
+##### redis读写工具
+
+```
 Redis Lab: 从Redis中读写数据，第三方工具
-
-
-
-
-
-
+```
 
 ##### 算子
 
@@ -2264,8 +2262,6 @@ Redis Lab: 从Redis中读写数据，第三方工具
 operator: 操作,方法
 
 ```
-
-
 
 ##### spark中设置log日志输出级别
 

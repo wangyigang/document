@@ -2261,7 +2261,7 @@ hive (default)> explain extended select * from emp;
 
 
 
-# 常见错误及解决方案
+## 常见错误及解决方案
 
 1）SecureCRT 7.3出现乱码或者删除不掉数据，免安装版的SecureCRT 卸载或者用虚拟机直接操作或者换安装版的SecureCRT 
 
@@ -2328,34 +2328,6 @@ hive (default)> set hive.input.format=org.apache.hadoop.hive.ql.io.HiveInputForm
 
 
 
-
-
-## hql练习记录
-
-```
-#创建数据库
-#if not exists，如果存在不创建，防止出现问题
-create database if not exists hive_db2 
-comment "first db"
-location "/hive_db2" 
-with dbproperties("createtime"="2018-12-18");
-
-#查看数据库详细信息--扩展信息
-desc database extended hive_db2;
-
-#查看数据库
-show databases;
-#采用模糊查询的方式进行
-show databases like 'hive*';
-
-#修改数据库--只能修改属性
-alter database hive_db2 set dbproperties("createtime"="2019-2-16");
-```
-
-
-
-
-
 ## 不熟部分
 
 > 显示数据库的详细信息
@@ -2408,3 +2380,37 @@ alter database hive_db2 set dbproperties("createtime"="2019-2-16");
 > partition(month='12'_
 >
 > 显示分区表的分区： show partitions stu_par
+
+
+
+##### 开窗函数和聚合函数的区别
+
+```
+over()开窗函数和聚合函数的不同之处是对于每个组返回多行，而聚合函数对于每个组只返回一行。
+开窗函数over()返回的结果中包含多个组的数据(组是group by分组后的数据) 聚合函数返回的结果只是包含一个组的数据
+```
+
+
+
+
+
+## Kylin
+
+查询性能亚秒级
+
+
+
+
+
+维度：
+
+度量：聚合的统计值
+
+
+
+cuboid=2的n次方
+
+cube(立方体) = 所有cuboid总和
+
+
+

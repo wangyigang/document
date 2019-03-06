@@ -2675,6 +2675,256 @@ public class Solution {
 
 
 
+
+
+
+
+## 58对称的二叉树
+
+> 题目描述
+>
+> 请实现一个函数，用来判断一颗二叉树是不是对称的。注意，如果一个二叉树同此二叉树的镜像是同样的，定义其为对称的。
+
+
+
+```
+public class Solution {
+      boolean isSymmetrical(TreeNode pRoot) {
+        if (pRoot == null) return true;
+        return isSymmetrical(pRoot.left, pRoot.right);
+    }
+
+    private boolean isSymmetrical(TreeNode left, TreeNode right) {
+        if (left == null && right == null) return true;
+        if (left == null || right == null) return false;
+        if (left.val == right.val)
+            return isSymmetrical(left.left, right.right) && isSymmetrical(left.right, right.left);
+        return false;
+    }
+}
+
+```
+
+
+
+## 59按之字形顺序打印二叉树
+
+> 题目描述:
+>
+> 请实现一个函数按照之字形打印二叉树，即第一行按照从左到右的顺序打印，第二层按照从右至左的顺序打印，第三行按照从左到右的顺序打印，其他行以此类推。
+
+
+
+```java
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
+
+
+class TreeNode {
+    int val = 0;
+    TreeNode left = null;
+    TreeNode right = null;
+
+    public TreeNode(int val) {
+        this.val = val;
+    }
+}
+
+/*
+题目描述
+请实现一个函数按照之字形打印二叉树，即第一行按照从左到右的顺序打印，
+第二层按照从右至左的顺序打印，第三行按照从左到右的顺序打印，其他行以此类推。
+使用双端队列方式
+
+ */
+
+public class Solution {
+    public ArrayList<ArrayList<Integer> > Print(TreeNode pRoot) {
+        ArrayList<ArrayList<Integer>> ret = new ArrayList<>();
+        if(pRoot== null){
+            return ret;
+        }
+        //创建一个队列和一个arraylist
+        ArrayList<Integer> list = new ArrayList<>();
+        LinkedList<TreeNode> queue = new LinkedList<>(); //创建双端队列，进行存放数据，好处，可以从左边或者右边都可以访问
+        
+        queue.addLast(null); //将null作为分层器
+        //先将根节点添加进去
+        queue.addLast(pRoot);
+
+        boolean leftToright = true; //标志方向
+        while(queue.size() !=1){
+            TreeNode node = queue.removeFirst();
+            if(node == null){
+                //根据标志位判断迭代器方向
+                Iterator<TreeNode> iterator = null;
+                if(leftToright){
+                    iterator = queue.iterator();
+                }else{
+                    iterator = queue.descendingIterator();// 反向迭代器
+                }
+                //标志位置反
+                leftToright=!leftToright;
+
+                //利用迭代器将数据放入容器中
+                while(iterator.hasNext()){
+                    list.add(iterator.next().val);
+                }
+                //迭代完成后，将所有数据放入到ret中
+                ret.add(new ArrayList<>(list));
+                list.clear(); //清除原来的数据
+                //添加分层符
+                queue.add(null);
+                continue;
+
+            }
+            if(node.left != null){
+                queue.addLast(node.left);
+            }
+            if(node.right != null){
+                queue.addLast(node.right);
+            }
+
+        }
+        return ret;
+    }
+```
+
+
+
+## 60把二叉树打印成多行
+
+> 题目描述：
+>
+> 从上到下按层打印二叉树，同一层结点从左至右输出。每一层输出一行。
+
+```java
+import org.junit.Test;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
+
+class TreeNode {
+    int val = 0;
+    TreeNode left = null;
+    TreeNode right = null;
+
+    public TreeNode(int val) {
+        this.val = val;
+    }
+}
+
+/*
+题目描述
+从上到下按层打印二叉树，同一层结点从左至右输出。每一层输出一行。
+ */
+public class Solution {
+    @Test
+    public void test(){
+//        [[8],[6,10],[5,7,9,11]]
+//        [[8],[6,10],[5,7,9,11]]
+//
+//        你的输出为:
+//        [[6,10],[5,7,9,11]]
+    }
+
+    ArrayList<ArrayList<Integer> > Print(TreeNode pRoot) {
+        ArrayList<ArrayList<Integer>> ret = new ArrayList<>();
+        if(pRoot == null){
+            return ret;
+        }
+        LinkedList<TreeNode> queue = new LinkedList<>();
+        ArrayList<Integer> list = new ArrayList<>();
+        queue.add(null); //先添加分隔符
+        queue.add(pRoot);
+
+        while(queue.size()!= 1){
+            TreeNode node = queue.removeFirst();
+            if(node ==null){
+                Iterator<TreeNode> iter = queue.iterator();
+                while(iter.hasNext()){
+                    list.add(iter.next().val);
+                }
+                ret.add(new ArrayList<>(list));
+                list.clear();
+                queue.add(null);
+                continue;
+            }
+
+            if(node.left!= null){
+                queue.add(node.left);
+            }
+            if(node.right!= null){
+                queue.add(node.right);
+            }
+        }
+        return ret;
+    }
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Leetcode
 
 ## 数论

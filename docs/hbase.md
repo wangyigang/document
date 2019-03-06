@@ -1,8 +1,8 @@
-##### HBase概述
+## HBase概述
 
 > HBase原型受Google的BigTable论文，收到该论文思想的启发
 
-​	HBase是一个高可靠型，高性能，面向列，可伸缩的**分布式存储系统**
+​	HBase是面向列，可伸缩的**分布式存储系统**
 
 
 
@@ -11,14 +11,34 @@
 - 海量存储： Hbase适合存储PB级别的海量数据
 - 列式存储： 列族存储，Hbase是根据列族来存储数据的，列族下面可以有多个列，列族在创建表的时候必须指定
 - 易扩展： 扩展性体现在两个方面： 一： 上层处理能力的扩展 二：基于存储的扩展HDFS
-- 高并发： Hbase的单个IO延迟下降并不多，能获得高并发，低延迟的服务
+- 高并发： Hbase的单个IO延迟下降并不多，能获得高并发，低延迟的服务(多核)
 - 稀疏： Hbase列的灵活性，在列族中，可以指定任意多的列, 如果不存，不会产生内存空间
 
 ![img](assets/1228818-20180328184005972-1939218640.png)
 
-HBase架构
+#### HBase架构
+
+##### 架构由来
+
+```
+1. mysql中单行表的数据太多，所以进行宽表拆分(垂直拆分)
+2. mysql中列的数据量太多，所以进行高表拆分(水平拆分)--按照某个字段进行分类
+3. 动态列： id info detail 存储json字符串,其中的属性可以动态增加
+==》将几种优化进行融合，重新进行设计,就类似于hbase基础
+
+特点：面向列的利于数据分析，但不利于查询
+```
 
 ![1549240623277](assets/1549240623277.png)
+
+```
+Hmaster : namenode
+HRegionServer: datanode
+Hlog: WAL预写日志
+Hregion: 高表, partition进行负载均衡(高表拆分)
+store: 列族(宽表拆分)
+mem Store:缓存，提高效率  达到阈值后，形成 stroreFile 
+```
 
 Hbase有client ,Zookeeper，master，HRegionServer, HDFS等组件组成
 
@@ -34,7 +54,7 @@ Hbase有client ,Zookeeper，master，HRegionServer, HDFS等组件组成
    - 通过zookeeper来监控regionServer的状态，当RegionServer有异常时，通过回调的形式通知Master RegionServer上下线的信息
    - 通过Zookeeper存储元数据的统一入口地址
 
-3. Hmaster
+3. Hmaster(namenode)
 
    - 为RegionServer分配Region
    - 维护整个集群的负载均衡
@@ -42,7 +62,7 @@ Hbase有client ,Zookeeper，master，HRegionServer, HDFS等组件组成
    - 发现失效的region，并将失效的Region分配到正常的Regionserver上
    - 当RegionServer失效的时候，协调Hlog的拆分
 
-4. HregionServer
+4. HregionServer(datanode)
 
    HregionServer直接对接用户的读写请求，
 
@@ -58,6 +78,15 @@ Hbase有client ,Zookeeper，master，HRegionServer, HDFS等组件组成
 
    - 提供元数据和表数据的底层存储服务
    - 数据多副本，保证高可靠和高可用性
+
+6. 其他组件：
+
+   ```
+   region： 分区，根据rowkey值切分成不同的region
+   store: 一个store对应一个列族
+   ```
+
+   
 
 Hbase表名词概念：
 
@@ -195,7 +224,7 @@ hadoop201:16010
    list
    ```
 
-##### 表的操作
+## 表的操作
 
 1. 创建表
 
@@ -213,6 +242,7 @@ hadoop201:16010
 
    ```
    scan 'student' # scam '表名'  ==> 全表扫描
+   scan 'student',{STARTROW=>'1001',STOPROW=>'1002'} //范围扫描，前闭后开，按照字典顺序进行比较
    ```
 
 4. 查看表结构
@@ -245,7 +275,7 @@ hadoop201:16010
    ```shell
    deleteall 'student','1001'
    //删除某rowkey的某一列数据
-   deleteall 'student','1002','info:sex'
+   delete 'student','1002','info:sex'
    ```
 
 9. 清空表数据
@@ -266,18 +296,24 @@ hadoop201:16010
 11. 变更表信息
 
     ```
-    alter 'stduent',{NAME=>'info',VERSION=>3}
+    //将info列族中的数据存放3个版本
+    alter 'stduent',{NAME=>'info',VERSION=>3}  
+    //查看多个版本的数据
+     get 'student','1001',{COLUMN=>'info:name',VERSIONS=>3}
+     scan 'student',{RAW=>true, VERSIONS=>3}
     ```
 
-##### Hbase数据结构
+#### Hbase数据结构
 
 ###### Rowkey
 
-​	Rowkey是用来检索记录的主键，访问Habse table中的行，有三种方式：
+​	rowkey是用来检索记录的主键，访问Hbase table中的行，有三种方式访问
 
+```
 1. 通过单个RowKey访问(get)
 2. 通过Rowkey的range(正则)(like)
 3. 全表扫描(scan)
+```
 
 RowKey可以是任意字符串(最长64KB , 实际应用一般为10-100bytes) Hbase内部，Rowkey保存为字节数组，存储时，数据按照Rowkey的字典序排序存储
 
@@ -287,13 +323,15 @@ RowKey可以是任意字符串(最长64KB , 实际应用一般为10-100bytes) Hb
 
 ###### Cell
 
+```
 由{rowkey,cf:column, version (timestamp 时间戳)}唯一确定的单元，cell中的数据时没有数据类型的，全都是字节码形式存储
+```
 
 ###### Time Stamp
 
-​	时间戳64位整型，时间戳可以由HBASE自动赋予，也可以程序员手动赋予
+​	cell中保存着同一份数据的多个版本，版本通过时间戳来索引  时间戳64位整型，时间戳可以由HBASE自动赋予，也可以程序员手动赋予， 每个cell中，不同版本的数按照时间倒序排序，最新的数据排在最前面
 
-为了避免数据版本存在过多造成的管理负担，Hbase提供了两种数据版本回收方式： 一：保存数据的最后n个版本 二： 保存固定时间的数据，超过一定时间(默认7天)，数据被回收
+​	为了避免数据版本存在过多造成的管理负担，Hbase提供了两种数据版本回收方式： 一：保存数据的最后n个版本 二： 保存固定时间的数据，超过一定时间(默认7天)，数据被回收
 
 
 
@@ -304,13 +342,17 @@ RowKey可以是任意字符串(最长64KB , 实际应用一般为10-100bytes) Hb
 创建表在指定的命名空间： create 'bigdata:student','info'
 展示所有的命名空间： list_namespace  #默认命名空间：default hbase
 删除命名空间： drop_namespace 
+
+所有的表都属于某个命名空间，如果没有指定，默认在default命名空间
 ```
 
+#### Hbase原理
 
+```
+meta表位置存在在zookeeper中，查询位置放在hbase:meta表中，所以，client客户端从zookeeper中现货区meta元数据的节点位置，然后从meta表中获取数据(负无穷，正无穷)的位置，然后进行读取
+```
 
-##### Hbase原理
-
-###### 读流程
+##### 读流程
 
 ![1549259853701](assets/1549259853701.png)
 
@@ -329,15 +371,15 @@ RowKey可以是任意字符串(最长64KB , 实际应用一般为10-100bytes) Hb
 ###### 细化部分(细化读取过程--查找到具体机器后)
 
 1. 先从MemStore(写缓存)中进行查找，如果查找到返回，
-2. 如果没有，先从BlockCache中进行查找，如果还没有找到
-3. 就从HFile中进行查找，查找到后，先将数据存放在BlockCache(读缓存)中
+2. 如果没有，先从BlockCache(块缓存)中进行查找，如果还没有找到
+3. 就从HFile中进行I查找，查找到后，先将数据存放在BlockCache(读缓存)中
 4. 然后返回Client中返回
 
 ![1549261010651](assets/1549261010651.png)
 
 
 
-###### 写数据流程
+##### 写数据流程
 
 ![1549261126915](assets/1549261126915.png)
 
@@ -357,28 +399,58 @@ RowKey可以是任意字符串(最长64KB , 实际应用一般为10-100bytes) Hb
 
 
 
-###### 数据flush过程
+##### 数据flush过程
 
 > regionServer全局的memstore的大小，超过堆的40%时，当前的flush会阻塞写流程
 >
-> global.memstore.size.lower.limit: 0.95(40%的0.95)
+> global.memstore.size.lower.limit: 0.95(40%的0.95)，一边存，一边刷写
 >
-> memstore.block.multiplier: 4*128 ==>必须进行刷写，flush
+> 1h 自动进行刷写
+>
+> 单个region的Memstore的缓存大小，默认128MB,会进行flush
+>
+> 当特别大的时候：memstore.block.multiplier: 4*128 ==>必须进行刷写flush
 
 1. 当MemStore数据达到阈值(128M),将数据刷到硬盘，将内存中的数据删除，同时删除Hlog中的历史数据
 2. 将数据存储到HDFS中
 3. 在Hlog中做标记点
 
+```
+//强制刷写
+flush 'student' //flush + tablename
+```
+
+
+
 ###### 数据合并过程
 
+```
+小文件个数很多时，进行合并，当合并文件太大，再进行拆分
+```
+
+```
 1. 当数据达到3块，Hmaster触发合并操作，Region将数据块加载到本地，进行合并(major_compact, minor_compact)
 2. 当合并的数据达到256M,进行拆分，将拆分后的region分配给不同HregionServer管理
 3. 当HregionServer宕机后，将HregionServer上的hlog拆分，然后分配给不同的HregionServer加载，修改.META
 4. Hlog会同步到HDFS
 
+```
+
+```
+超过256MB进行切分算法
+//切分策略--IncreasingToUpperBoundRegionSplitPolicy
+  protected long getSizeToCheck(final int tableRegionsCount) {
+    // safety check for 100 to avoid numerical overflow in extreme cases
+    return tableRegionsCount == 0 || tableRegionsCount > 100
+               ? getDesiredMaxFileSize()
+               : Math.min(getDesiredMaxFileSize(),
+                          initialSize * tableRegionsCount * tableRegionsCount * tableRegionsCount); //2*128MB* n立方
+  } //若果没有超过10G,就使用2*128*n立方，
+```
 
 
-##### Hbase API操作
+
+## Hbase API操作
 
 - 判断表是否存在
 
@@ -388,22 +460,18 @@ RowKey可以是任意字符串(最长64KB , 实际应用一般为10-100bytes) Hb
 
 - 创建表
 
+
+	//创建表属性对象,表名需要转字节
+	  		HTableDescriptor descriptor = new HTableDescriptor(TableName.valueOf(tableName));
+	  		//创建多个列族
+	  		for(String cf : columnFamily){
+	  			descriptor.addFamily(new HColumnDescriptor(cf));
+	  		}
+	  		//根据对表的配置，创建表
+	  		admin.createTable(descriptor);
+
+
   ```
-  	//创建表属性对象,表名需要转字节
-  		HTableDescriptor descriptor = new HTableDescriptor(TableName.valueOf(tableName));
-  		//创建多个列族
-  		for(String cf : columnFamily){
-  			descriptor.addFamily(new HColumnDescriptor(cf));
-  		}
-  		//根据对表的配置，创建表
-  		admin.createTable(descriptor);
-  ```
-
-
-
-
-
-```java
 public class HbaseApi {
     public static void main(String[] args) throws IOException {
         //1.导入依赖jar包
@@ -474,15 +542,145 @@ public class HbaseApi {
     }
 
 }
+  ```
+
+##### 全局扫描
+
+```
+package HbaseAPITest;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.*;
+import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.util.Bytes;
+
+import java.io.IOException;
+
+/*
+    范围查询
+ */
+public class TestHbaseAPi_scan {
+    public static void main(String[] args) throws IOException {
+        //使用java程序访问hbase
+        //获取configuration
+        Configuration conf = HBaseConfiguration.create();
+
+        //获取zookeeper的连接配置
+        conf.set("hbase.zookeeper.quorum", "hadoop102");
+        conf.set("hbase.zookeeper.property.clientPort", "2181");
+
+        //建立和hbase数据库的连接
+        Connection conn = ConnectionFactory.createConnection(conf);
+        System.out.println(conn);
+        //操作hbase数据库
+        Admin admin = conn.getAdmin();
+
+        //判断数据库中表是否存在
+        TableName tn = TableName.valueOf("student1");
+        boolean b = admin.tableExists(tn);
+
+        //如果存在，就先删除掉表
+        if (b) {
+            //禁用表
+            admin.disableTable(tn);
+            //删除
+            admin.deleteTable(tn);
+        }
+        //创建表
+        HTableDescriptor tableDescriptor = new HTableDescriptor(tn);
+        //添加列族--info
+        HColumnDescriptor columnDescriptor = new HColumnDescriptor("info");
+        tableDescriptor.addFamily(columnDescriptor);
+        //添加列族--detail
+        HColumnDescriptor detailColumnDES = new HColumnDescriptor("detail");
+        tableDescriptor.addFamily(detailColumnDES);
+        admin.createTable(tableDescriptor);
+
+        //增加数据
+        //获取table对象
+        Table table = conn.getTable(tn);
+
+        String rowkey = "1001";
+        Put put = new Put(Bytes.toBytes(rowkey));
+
+        //添加cf cn cv
+        byte[] cf = Bytes.toBytes("info");
+        byte[] cn = Bytes.toBytes("name");
+        byte[] cv = Bytes.toBytes("zhangsan");
+        //添加数据
+        put.addColumn(cf, cn, cv);
+        table.put(put);
+
+        //添加第二个数据
+        String rowkey1 = "1002"; // =>
+        Put put1 = new Put(Bytes.toBytes(rowkey1));
+
+        byte[] columnFamily1 = Bytes.toBytes("detail");
+        byte[] column1 = Bytes.toBytes("name");
+        byte[] value1 = Bytes.toBytes("atguigu-lisi");
+
+        put1.addColumn(columnFamily1, column1, value1);
+
+        table.put(put1);
+
+        String rowkey2 = "1003"; // =>
+        Put put2 = new Put(Bytes.toBytes(rowkey2));
+
+        byte[] columnFamily2 = Bytes.toBytes("detail");
+        byte[] column2 = Bytes.toBytes("name");
+        byte[] value2 = Bytes.toBytes("atguigu-wangwu");
+
+        byte[] columnFamily3 = Bytes.toBytes("info");
+        byte[] column3 = Bytes.toBytes("name");
+        byte[] value3 = Bytes.toBytes("atguigu-wangwu");
+
+        put2.addColumn(columnFamily3, column3, value3);
+
+        put2.addColumn(columnFamily2, column2, value2);
+
+        table.put(put2);
+        System.out.println("数据保存成功");
+        //查询数据
+        Scan scan = new Scan();
+        scan.addFamily(Bytes.toBytes("info"));
+
+        ResultScanner resultScanner = table.getScanner(scan);
+
+        for (Result result : resultScanner) {
+            for (Cell cell : result.rawCells()) {
+                System.out.println(Bytes.toString(CellUtil.cloneValue(cell)));
+            }
+        }
+
+    }
+}
 ```
 
 
 
 ##### MapReduce
 
-###### 自定义HBase-MapReduce
+##### 作用
 
-> 将fruit表中的数据，通过MR嵌入到fruit_mr表中
+```
+通过Hbase相关的java API,可以实现伴随Hbase操作的MapReduce过程，比如使用MapReduce将数据从本地文件导入到Hbase表中，比如从Hbase读取数据然后使用Mapreduce做数据分析
+```
+
+###### 环境变量的导入
+
+```
+1./etc/profile中
+export HBASE_HOME=/opt/module/hbase-1.3.1
+export HADOOP_HOME=/opt/module/hadoop-2.7.2
+2. hadoop-env.sh (在for循环之后配置)
+export HADOOP_CLASSPATH=$HADOOP_CLASSPATH:/opt/module/hbase/lib/* //配置完成后，进行分发xsync
+```
+
+
+
+##### 自定义HBase-MapReduce1
+
+> 需求：将fruit表中的部分数据，通过MR迁入到fruit_mr表中
 
 - Test类
 
@@ -499,7 +697,6 @@ public class TestHbaseMr {
         System.exit(status);
     }
 }
-
 ```
 
 - Tools类
@@ -588,7 +785,17 @@ public class HbaseMRReduce extends TableReducer<ImmutableBytesWritable, Put,Null
 }
 ```
 
-###### 自定义HBase-MapReduce2
+##### 打包运行任务
+
+​	需要打可运行jar包
+
+```
+/opt/module/hadoop-2.7.2/bin/yarn hbase-0.0.1-SNAPSHOT.jar(jar包路径) 指定jar包中全路径(可能不需要)
+```
+
+
+
+##### 自定义HBase-MapReduce2
 
 > 实现将HDFS中的数据写入到HBase表中
 
@@ -624,50 +831,110 @@ public class ReadFruitFromHDFSMapper extends Mapper<LongWritable, Text, Immutabl
 
 
 
+```
+
+public class HBaseFileTool implements Tool {
+    @Override
+    public int run(String[] args) throws Exception {
+        //获取配置信息
+        Configuration conf = new Configuration();
+        //获取job
+        Job job = Job.getInstance(conf);
+        //设置map端操作
+        job.setMapOutputKeyClass(ImmutableBytesWritable.class);
+        job.setMapOutputValueClass(Put.class);
+        job.setMapperClass(HbaseFileMapper.class);
+        //设置reduce端操作
+
+        TableMapReduceUtil.initTableReducerJob("fruit_mr",HBaseMRReduce.class
+                , job);
+        //提交job
+        boolean b = job.waitForCompletion(true);
+        //输出结果
+        System.out.println(b);
+        return b? JobStatus.State.SUCCEEDED.getValue(): JobStatus.State.FAILED.getValue();
+    }
+
+    /**
+     *  设置配置信息--目前不需要
+     * @param conf
+     */
+    @Override
+    public void setConf(Configuration conf) {
+
+    }
+
+    /**
+     *  获取配置信息，目前不需要
+     * @return
+     */
+    @Override
+    public Configuration getConf() {
+        return null;
+    }
+}
+```
+
+```
+其他组件和自定义HbaseMapReduce1相同，打印出可运行jar包即可
+```
 
 
-##### Hbase优化
-
-- 高可用
-
-  ```shell
-  1. 关闭Hbase集群
-  2. 在conf目录下创建backup-masters文件 touch conf/backup-masters
-  3. 在backup-masters文件中配置高可用Hmaster节点  echo hadoop203> conf/backup-masters
-  4. 在整个conf目录scp到其他节点  
-  ```
-
-- 预分区
-
-  > 每一个region维护startRowkey与endRowKey, 如果加入的数据复合某个region的rowkey范围，则数据由这个region维护，依照这个原则，可以将数据所投放的分区提前大致的规划好，以提高Hbase性能
-
-  1. 手动设定预分区
-
-  ```shell
-   create 'staff1','info','partition1',SPLITS => ['1000','2000','3000','4000']
-  ```
-
-  2. 生成16进制序列预分区
-
-     ```\
-     create 'staff2','info','partition2',{NUMREGIONS => 15, SPLITALGO => 'HexStringSplit'}
-     ```
-
-  3. 按照文件中设定的规则预分区
-
-     ```
-     文件中设定规则: splits.txt 
-     aaaa
-     bbbb
-     cccc
-     dddd//顺序不重要，会自动调整
-     //执行下列分区规则
-     create 'staff3','partition3',SPLITS_FILE => 'splits.txt'
-     ```
 
 
 
-#### **基础优化**
+
+
+
+
+
+
+
+
+
+
+## Hbase优化
+
+##### 高可用
+
+```shell
+1. 关闭Hbase集群
+2. 在conf目录下创建backup-masters文件 touch conf/backup-masters
+3. 在backup-masters文件中配置高可用Hmaster节点  echo hadoop203> conf/backup-masters
+4. 在整个conf目录scp到其他节点  
+```
+
+##### 预分区
+
+> 每一个region维护startRowkey与endRowKey, 如果加入的数据复合某个region的rowkey范围，则数据由这个region维护，依照这个原则，可以将数据所投放的分区提前大致的规划好，以提高Hbase性能
+
+1. 手动设定预分区
+
+```shell
+ create 'staff1','info','partition1',SPLITS => ['1000','2000','3000','4000']
+```
+
+2. 生成16进制序列预分区
+
+   ```\
+   create 'staff2','info','partition2',{NUMREGIONS => 15, SPLITALGO => 'HexStringSplit'}
+   ```
+
+3. 按照文件中设定的规则预分区
+
+   ```
+   文件中设定规则: splits.txt 
+   aaaa
+   bbbb
+   cccc
+   dddd//顺序不重要，会自动调整
+   //执行下列分区规则
+   create 'staff3','partition3',SPLITS_FILE => 'splits.txt'
+   ```
+
+
+
+##### 基础优化
 
 1．允许在HDFS的文件中追加内容
 
@@ -748,5 +1015,37 @@ hbase.hregion.memstore.flush.size：134217728
 hbase.regionserver.global.memstore.upperLimit：0.4hbase.regionserver.global.memstore.lowerLimit：0.38
 
 即：当MemStore使用内存总量达到hbase.regionserver.global.memstore.upperLimit指定值时，将会有多个MemStores flush到文件中，MemStore flush 顺序是按照大小降序执行的，直到刷新到MemStore使用内存略小于lowerLimit
+```
+
+
+
+## 其他
+
+##### 原子性
+
+```
+int i=0;
+i=i++   //临时变量_i long 64位,分2部分处理，所以不是原子性
+sout(i)//0
+```
+
+##### 多态,重载
+
+```
+多态：父类的引用指向子类的对象，一个对象的多种形态 
+A a = new B();
+动态绑定：java中只有方法才有动态绑定，属性没有这种机制,属性属于就近原则，因为底层其实有this关键字
+```
+
+```
+byte short int 可以自动进行转换(char不能转换，因为char都是正数，不能转换)
+```
+
+##### 空指针异常
+
+```
+1. 调用空对象的成员属性或成员方法会出现空指针异常
+2. 增强for循环也会出现空指针异常，因为增强for循环实质上调用的是iterator迭代器，hasnetxt()方法
+3. 自动拆箱也可能出现空指针异常，调用this.value
 ```
 

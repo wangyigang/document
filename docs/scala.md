@@ -18,7 +18,7 @@
 
 #### 变量
 
-##### 变量的介绍
+##### 变量的介绍odo
 
 > 基本语法：var | val 变量名 [:变量类型] = 变量值
 
@@ -305,7 +305,7 @@ import util.control.Breaks._
 
 ##### 函数/方法的定义
 
-###### 介绍
+##### 介绍
 
 - scala中，方法和函数几乎可以等同
 
@@ -313,7 +313,7 @@ import util.control.Breaks._
 - scala中函数式编程和面向对象融合在一起了
 - 函数四编程的主要思想是把运算过程尽量携程一系列嵌套的函数调用
 
-###### 基本语法
+##### 基本语法
 
 ```
 def 函数名([参数名:参数类型]...)[[:返回值类型]=]{
@@ -327,25 +327,28 @@ def 函数名([参数名:参数类型]...)[[:返回值类型]=]{
 	3.形式3： 空 : 无返回值类型，为Unit
 ```
 
-###### 函数递归需要遵守的原则
+##### 函数递归需要遵守的原则
 
 1. 程序执行一个函数时，就创建一个新的栈帧(函数栈)
 
 2. 递归必须有结束条件，且向递归条件逼近
 
-   
 
-函数/方法
+##### 过程
 
-TODO
+定义：将函数的返回值为unit的函数称为过程procedure,如果明确函数没有返回值，那么等号可以省略
 
-
+```
+  def f1(){ //: 返回值= 都没有
+    println("hello")
+  }
+```
 
 ##### 惰性求值
 
 > 惰性计算(尽可能延迟表达式求值), 在真正需要的时候进行计算表达式的值
 
-
+==使用关键字lazy==
 
 ```scala
 object LazyDemo {
@@ -366,6 +369,12 @@ object LazyDemo {
 
 > 函数的返回值声明为lazy时，函数的执行被推迟, 知道对此进行首次取值，该函数才会执行(惰性函数)
 
+注意点： lazy不能修饰var类型的变量
+
+​		添加lazy修饰的方法会延迟执行，修饰的val变量会延迟分配
+
+
+
 ##### 异常
 
 > try和catch块处理异常
@@ -381,7 +390,7 @@ object ScalaException {
       case  e:ArithmeticException=> {
         println("算术异常="+e.getMessage)
       }
-      case e:Exception => println("异常信息="+e.getMessage)
+      case e:Exception => println("异常信息="+e.getMessage)//byZero
     }finally {
       println("finally...")
     }
@@ -427,10 +436,6 @@ def main(args: Array[String]): Unit = {
     "abc".toInt
   }
 ```
-
-###### 过程
-
-将函数的返回类型为Unit的函数成为过程(procedure)
 
 
 
