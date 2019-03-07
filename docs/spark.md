@@ -1582,35 +1582,31 @@ object StreamWordCountTest {
 
 ```scala
 
-object StreamWordCountFromDIr {
+/*
+    注意点: 1.hdfs协议： hdfs://hadoop102:9000/path
+    
+ */
+object TestTextFileWordCount {
   def main(args: Array[String]): Unit = {
+    val conf: SparkConf = new SparkConf().setMaster("local[*]").setAppName("TestTextFileWordCount")
 
-    // 创建Spark配置信息
-    val streamingConf: SparkConf = new SparkConf().setMaster("local[*]").setAppName("StreamingWordCount")
+    //创建streamingContext
+    val streamingContext = new StreamingContext(conf, Seconds(4))
 
-    // 创建流式数据处理上下文对象
-    val ssc: StreamingContext = new StreamingContext(streamingConf, Seconds(5))
+    //监控接收数据源 --将数据通过命令上传到hdfs上 hadoop fs -put a.tsv /fileStream
+    val Dstream: DStream[String] = streamingContext.textFileStream("hdfs://hadoop102:9000/fileStream")
+    println(Dstream)
 
-    // 监控指定的目录，获取新增文件中的数据,封装为DStream
-    val fileDStream: DStream[String] = ssc.textFileStream("in")
+    //将数据进行处理
+    val resultRDD: DStream[(String, Int)] = Dstream
+      .flatMap(_.split(" ")).map((_,1)).reduceByKey(_+_)
 
-    // 将获取的一行数据分解为单词
-    val wordDStream: DStream[String] = fileDStream.flatMap(_.split(" "))
+    //打印查看是否正确
+    resultRDD.print()
 
-    // 为了统计方便，将单词转换结构，变成元组数据
-    val tupleDStream: DStream[(String, Int)] = wordDStream.map(word=>(word, 1))
+    streamingContext.start()
+    streamingContext.awaitTermination()
 
-    // 聚合统计结果
-    val resultDStream: DStream[(String, Int)] = tupleDStream.reduceByKey(_+_)
-
-    // 打印结果
-    resultDStream.print()
-
-    // 启动流式处理
-    ssc.start()
-
-    // 等待数据
-    ssc.awaitTermination()
   }
 }
 
@@ -1621,77 +1617,71 @@ object StreamWordCountFromDIr {
 继承Receiver,并实现onStart, onStop方法定义数据源采集
 
 ```scala
-import java.io.{BufferedReader, InputStreamReader}
-import java.net.Socket
 
-import org.apache.spark.SparkConf
-import org.apache.spark.storage.StorageLevel
-import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
-import org.apache.spark.streaming.{Seconds, StreamingContext}
-import org.apache.spark.streaming.receiver.Receiver
-
-import scala.util.control._
-
-object TestCustomerReceiver {
+/*
+    自定义数据源
+ */
+object CustomerRecevier {
   def main(args: Array[String]): Unit = {
+    //创建sparkconf
+    val conf: SparkConf = new SparkConf().setMaster("local[*]").setAppName("CustomerRecevier")
+    //创建streaming
+    val streamingContext = new StreamingContext(conf, Seconds(5))
+    //创建自动以数据源类，然后进行接收数据
+    val receiver: ReceiverInputDStream[String] = streamingContext.receiverStream(
+      new CustomerReceiver("hadoop102",9999))
 
-    //使用自定义接收器采集数据
-    val conf: SparkConf = new SparkConf().setMaster("local[*]").setAppName("test")
-    val ssc = new StreamingContext(conf, Seconds(5))
-    //创建自定义reciever
-    val lineStream: ReceiverInputDStream[String] = ssc.receiverStream(new CustomerReceiver("hadoop102",8888))
-    //进行单词映射成元祖(word, 1)
-    val splitStream: DStream[String] = lineStream.flatMap(_.split(" "))
-    val mapStream: DStream[(String, Int)] = splitStream.map((_,1))
-    //进行累加
-    val wordAndCountStreams: DStream[(String, Int)] = mapStream.reduceByKey(_+_)
-    //打印
-    wordAndCountStreams.print()
-    //启动sparkstreamingContext
-    ssc.start()
-    //等待
-    ssc.awaitTermination()
+    receiver.print()
+    //接收到数据后，对数据进行处理
+    val resultRDD: DStream[(String, Int)] = receiver.flatMap(_.split(" ")).map((_,1)).reduceByKey(_+_)
+
+    resultRDD.print()
+    //启动
+    streamingContext.start()
+    //等待数据
+    streamingContext.awaitTermination()
+
   }
 }
-class CustomerReceiver(host: String, port:Int) extends Receiver[String](StorageLevel.MEMORY_ONLY){
-  var breakFlat : Boolean = true
 
-  //自定义函数
-  def receiver(): Unit ={
-    //监听端口
-    var socket = new Socket(host,port)
-    //获取数据
-    val reader = new BufferedReader(new InputStreamReader(socket.getInputStream(),"UTF-8"))
-    var line = ""
-    Breaks.breakable{
-      while ((line = reader.readLine()) != null) {
-        if ("==".equals(line)) {
-          Breaks.break()
-        }
-        store(line)
-      }
-    }
-    //改变标志位
-    breakFlat=false
-    socket.close()
-    reader.close()
-  }
+//自定义数据源，实现监控某个端口号，获取该端口号内容。
+class CustomerReceiver(host:String, port:Int) extends Receiver[String](StorageLevel.MEMORY_ONLY){
 
-  //起始时
+  /**
+    * 开始时调用
+    */
   override def onStart(): Unit = {
-    new Thread("sock"){
+    //socket编程--启动一个线程，不断接收数据
+    new Thread("Socket Receiver"){
       override def run(): Unit = {
-        while(breakFlat){
-          receiver()
-
-          Thread.sleep(1000)
-        }
+        receive();
       }
-    }.start()
+    }.start() //启动线程
   }
-  //结束时
+
+  /**
+    *  结束时调用
+    */
   override def onStop(): Unit = {
-    breakFlat= false;
+
+  }
+
+  def receive(): Unit ={
+    var socket = new Socket(host,port)
+    //创建IO流
+    val reader = new BufferedReader(new InputStreamReader(socket.getInputStream,"UTF-8"))
+
+    var str:String =""
+    while( !isStopped() &&(str=reader.readLine())!=null){
+      store(str)
+    }
+
+    //跳出循环则关闭资源
+    reader.close()
+    socket.close()
+
+    //重启任务
+    restart("restart")
   }
 }
 ```
@@ -1771,13 +1761,21 @@ bin/kaftopics.sh --zookeeper hadoop102:2181 --list
  bin/kafka-console-producer.sh --broker-list hadoop102:9092 --topic ss
 ```
 
+#### DStream转换
+
+DStream上的原语 分为Transformations(转换)和Output Operation(输出) 两种，此外转换还有一些特殊的原语，如： updateStateByKey(), transform() 和各种Window相关原语
+
+##### 无状态转化操作
+
+​	无状态转化操作不会对不同时间批次的数据进行累加处理。
+
 ##### 有状态转换操作
 
 ​	无状态转换是分别应用到每个RDD上，例如，reduceByKey()会规约每个时间区内的数据，但不会规约不同区间之间的数据
 
 ###### UpdateStateByKey
 
-用于记录历史记录，当需要跨批次维护状态时，可以使用updateStateByKey()提供对一个状态变量的访问
+==用于记录历史记录==，当需要跨批次维护状态时，可以使用updateStateByKey()提供对一个状态变量的访问
 
 **使用updateStateByKey需要对检查点目录进行配置，会使用检查点checkpoint保存状态**
 
@@ -1827,8 +1825,6 @@ object WordCountFromDIR {
 
 > 所有基于窗口的操作都需要两个步骤，分别为窗口时长及滑动步长，两者都必须是StreamContext的批次间隔的整数倍
 
-
-
 ```scala
 
 import org.apache.spark.SparkConf
@@ -1859,8 +1855,29 @@ object WordCountWindow {
     ssc.awaitTermination()
   }
 }
-//nc -lk 8888
+//nc -lk 8888 然后输入测试数据
 ```
+
+##### Transform 
+
+允许在DStream上执行任意的RDD-to-RDD函数，==函数每一批次调用一次==
+
+##### Join
+
+​	允许两个stream进行连接，leftOuterjoin, rightOuterJoin, fullOuterJoin
+
+#### DStream输出
+
+```
+1.print(): 在Driver节点上打印DStream，用于开发和调试
+2.saveAsTextFile(prefix,[suffiex]): 以text文件形式存储DStream内容
+3. saveAsObjectFiles(prefix,[suffix]) : 以Java对象序列化方式存储	为sequencefile文件
+4.foreachRDD(func)： 将func作用于每一个rdd
+```
+
+
+
+
 
 
 
