@@ -1862,6 +1862,8 @@ object WordCountWindow {
 
 允许在DStream上执行任意的RDD-to-RDD函数，==函数每一批次调用一次==
 
+![1551940334079](assets/1551940334079.png)
+
 ##### Join
 
 ​	允许两个stream进行连接，leftOuterjoin, rightOuterJoin, fullOuterJoin

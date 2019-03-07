@@ -1429,6 +1429,49 @@ case Bundle(_, _, art @ Book(_, _), rest) => (art, rest)
 
 
 
+##### 闭包(closure)
+
+###### 基本介绍：
+
+闭包就是一个函数和其他相关的应用环境组合的一个整体(实体)  (闭包=一个函数和这个函数使用到的变量等构成的一个整体)
+
+```scala
+object ClosureTest {
+  def main(args: Array[String]): Unit = {
+    //闭包
+    var f = makeSuffix(".jpg")
+    println(f("dog.jpg"))
+    println(f("cat"))
+
+    val f2 = minus(20)
+    println(f2(1))
+    println(f2(2))
+  }
+
+  def minus(x: Int) = {
+    (y: Int) => {
+      x - y
+    }
+  }
+
+  def makeSuffix(suffix: String) = {
+    (filename: String) => {
+      if (filename.endsWith(suffix)) {
+        filename
+      } else {
+        filename + suffix
+      }
+    }
+  }
+}
+```
+
+###### 闭包的好处
+
+> 闭包可以保留上次引用到的某个值，所以可以一次传入反复使用
+
+
+
 
 
 ##### 函数柯里化
@@ -1466,7 +1509,45 @@ object CurliTest {
 
 
 
+##### 控制抽象
 
+###### 条件：
+
+```
+参数是函数
+函数参数没有输入值也没有返回值
+```
+
+- code:实现类似while循环
+
+  ```scala
+  //特点：控制抽象实质上是参数是函数，  函数参数没有输入也没有返回值
+  //再使用递归的特性，处理数据
+    def util(condition: =>Boolean)(block: => Unit):Unit = {
+      if (condition){
+        block
+        util(condition)(block)
+      }
+    }
+  
+    //函数作为scala一等公民的具体体现
+    //实现类似while()循环函数
+    def abstractcontrolTest(): Unit ={
+      var x =10
+      util(x>0){
+        x-=1
+        println("until x="+x)
+      }
+    }
+  ```
+
+  
+
+### 递归方式编程
+
+```
+编程范式： 命令式编程， 函数式编程， 逻辑式编程
+```
 
 
 
