@@ -494,184 +494,250 @@ hadoop103上的Flume-1监控文件/opt/module/group.log，
 hadoop102上的Flume-2监控某一个端口的数据流，
 Flume-1与Flume-2将数据发送给hadoop104上的Flume-3，Flume-3将最终数据打印到控制台。
 
+```
+//hadoop105
+a3.sources=r1
+a3.sinks=k1
+a3.channels=c1
 
+#配置source
+a3.sources.r1.type=avro
+a3.sources.r1.bind=hadoop105
+a3.sources.r1.port=4141
 
+#配置sink
+a3.sinks.k1.type=logger
 
-配置Source用于监控hive.log文件，配置Sink输出数据到下一级Flume。
-在hadoop103上创建配置文件并打开
-[atguigu@hadoop103 group3]$ touch flume1-logger-flume.conf
-[atguigu@hadoop103 group3]$ vim flume1-logger-flume.conf 
-添加如下内容
+#配置channel
+a3.channels.c1.type=memory
+a3.channels.c1.capacity=1000
+a3.channels.c1.transactionCapacity=100
+
+a3.sources.r1.channels=c1
+a3.sinks.k1.channel=c1
+```
+
+```
+//hadoop103
+a1.sources = r1
+a1.sinks = k1
+a1.channels = c1
+
+# Describe/configure the source
+a1.sources.r1.type = exec
+a1.sources.r1.command = tail -F /opt/module/group.log
+a1.sources.r1.shell = /bin/bash -c
+
+# Describe the sink
+a1.sinks.k1.type = avro
+a1.sinks.k1.hostname = hadoop105
+a1.sinks.k1.port = 4141
+
+# Describe the channel
+a1.channels.c1.type = memory
+a1.channels.c1.capacity = 1000
+a1.channels.c1.transactionCapacity = 100
+
+# Bind the source and sink to the channel
+a1.sources.r1.channels = c1
+a1.sinks.k1.channel = c1
+```
+
+```
+//hadoop102
+#定义各个组件
+a2.sources= r1
+a2.sinks = k1
+a2.channels = c1
+
+#配置source
+a2.sources.r1.type = netcat
+a2.sources.r1.bind=hadoop102
+a2.sources.r1.port=44444
+
+#配置sink
+a2.sinks.k1.type=avro
+a2.sinks.k1.hostname=hadoop105
+#端口号一致才有聚集效果
+a2.sinks.k1.port=4141
+#配置channel
+a2.channels.c1.type=memory
+a2.channels.c1.capacity=1000
+a2.channels.c1.transactionCapacity=100
+#进行绑定
+a2.sources.r1.channels=c1
+a2.sinks.k1.channel=c1
+```
+
 
 
 4．执行配置文件
-分别开启对应配置文件：flume3-flume-logger.conf，flume2-netcat-flume.conf，flume1-logger-flume.conf。
-[atguigu@hadoop104 flume]$ bin/flume-ng agent --conf conf/ --name a3 --conf-file job/group3/flume3-flume-logger.conf -Dflume.root.logger=INFO,console
 
-[atguigu@hadoop102 flume]$ bin/flume-ng agent --conf conf/ --name a2 --conf-file job/group3/flume2-netcat-flume.conf
+```
+hadoop102:
+	bin/flume-ng agent -c conf/ -n a2 -f jobs/group3/flume2-netcat-avro.conf 
+hadoop103:
+	bin/flume-ng agent -c conf/ -n a1 -f jobs/gup3/flume3-exec-avro.conf 
+hadoop105:
+	bin/flume-ng agent -c conf/ -n a3 -f jobs/group3/flume5-avro-console.conf -Dflume.root.logger=INFO,console
+	
+hadoop102中: nc hadoop102 44444 使用netcat发送端口消息
+hadoop103中: 创建group.log日志文件，并添加消息
+```
 
-[atguigu@hadoop103 flume]$ bin/flume-ng agent --conf conf/ --name a1 --conf-file job/group3/flume1-logger-flume.conf
-5．在hadoop103上向/opt/module目录下的group.log追加内容
-[atguigu@hadoop103 module]$ echo 'hello' > group.log
-6．在hadoop102上向44444端口发送数据
-[atguigu@hadoop102 flume]$ telnet hadoop102 44444
-7.检查hadoop104上数据
-
-
+```
+将多台节点的数据汇总到一个节点，进行聚合，
+```
 
 
 
 ##  Flume监控之Ganglia
 
-4.1 Ganglia的安装与部署
-1) 安装httpd服务与php
-[atguigu@hadoop102 flume]$ sudo yum -y install httpd php
-2) 安装其他依赖
-[atguigu@hadoop102 flume]$ sudo yum -y install rrdtool perl-rrdtool rrdtool-devel
-[atguigu@hadoop102 flume]$ sudo yum -y install apr-devel
-3) 安装ganglia
-[atguigu@hadoop102 flume]$ sudo rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
-[atguigu@hadoop102 flume]$ sudo yum -y install ganglia-gmetad 
-[atguigu@hadoop102 flume]$ sudo yum -y install ganglia-web
-[atguigu@hadoop102 flume]$ sudo yum install -y ganglia-gmond
-Ganglia由gmond、gmetad和gweb三部分组成。
-gmond（Ganglia Monitoring Daemon）是一种轻量级服务，安装在每台需要收集指标数据的节点主机上。使用gmond，你可以很容易收集很多系统指标数据，如CPU、内存、磁盘、网络和活跃进程的数据等。
-gmetad（Ganglia Meta Daemon）整合所有信息，并将其以RRD格式存储至磁盘的服务。
-gweb（Ganglia Web）Ganglia可视化工具，gweb是一种利用浏览器显示gmetad所存储数据的PHP前端。在Web界面中以图表方式展现集群的运行状态下收集的多种不同指标数据。
-4) 修改配置文件/etc/httpd/conf.d/ganglia.conf
-[atguigu@hadoop102 flume]$ sudo vim /etc/httpd/conf.d/ganglia.conf
+##### Ganglia的安装与部署
+
+```
+1.安装httpd服务与php
+ sudo yum -y install httpd php
+2.安装其他依赖
+ sudo yum -y install rrdtool perl-rrdtool rrdtool-devel
+ sudo yum -y install apr-devel
+3. 安装ganglia
+ sudo rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
+4. sudo yum -y install ganglia-gmetad 
+5. sudo yum -y install ganglia-web
+6. sudo yum install -y ganglia-gmond
+```
+
+> Ganglia由gmond、gmetad和gweb三部分组成。
+> gmond（Ganglia Monitoring Daemon）是一种轻量级服务，安装在每台需要收集指标数据的节点主机上。使用gmond，你可以很容易收集很多系统指标数据，如CPU、内存、磁盘、网络和活跃进程的数据等。
+> gmetad（Ganglia Meta Daemon）整合所有信息，并将其以RRD格式存储至磁盘的服务。
+> gweb（Ganglia Web）Ganglia可视化工具，gweb是一种利用浏览器显示gmetad所存储数据的PHP前端。在Web界面中以图表方式展现集群的运行状态下收集的多种不同指标数据
+
+4修改配置文件/etc/httpd/conf.d/ganglia.conf
+sudo vim /etc/httpd/conf.d/ganglia.conf
 修改为红颜色的配置：
 
+```
+<Location /ganglia>
+  Order deny,allow
+  #Deny from all
+  Allow from all
+  # Allow from 127.0.0.1
+  # Allow from ::1
+  # Allow from .example.com
+</Location>
 
-尖叫提示：selinux本次生效关闭必须重启，如果此时不想重启，可以临时生效之：
-[atguigu@hadoop102 flume]$ sudo setenforce 0
-5) 启动ganglia
-[atguigu@hadoop102 flume]$ sudo service httpd start
-[atguigu@hadoop102 flume]$ sudo service gmetad start
-[atguigu@hadoop102 flume]$ sudo service gmond start
-6) 打开网页浏览ganglia页面
-http://192.168.1.102/ganglia
-尖叫提示：如果完成以上操作依然出现权限不足错误，请修改/var/lib/ganglia目录的权限：
-[atguigu@hadoop102 flume]$ sudo chmod -R 777 /var/lib/ganglia
-4.2 操作Flume测试监控
-1) 修改/opt/module/flume/conf目录下的flume-env.sh配置：
-JAVA_OPTS="-Dflume.monitoring.type=ganglia
--Dflume.monitoring.hosts=192.168.1.102:8649
--Xms100m
--Xmx200m"
-2) 启动Flume任务
-[atguigu@hadoop102 flume]$ bin/flume-ng agent \
---conf conf/ \
---name a1 \
---conf-file job/flume-netcat-logger.conf \
--Dflume.root.logger=INFO,console \
--Dflume.monitoring.type=ganglia \
--Dflume.monitoring.hosts=192.168.1.102:8649
-3) 发送数据观察ganglia监测图
-[atguigu@hadoop102 flume]$ nc localhost 44444
-样式如图：
+修改数据源
+data_source "hadoop102" 192.168.1.102
+修改配置文件/etc/ganglia/gmod.conf
 
-图例说明：
-字段（图表名称）	字段含义
-EventPutAttemptCount	source尝试写入channel的事件总数量
-EventPutSuccessCount	成功写入channel且提交的事件总数量
-EventTakeAttemptCount	sink尝试从channel拉取事件的总数量。这不意味着每次事件都被返回，因为sink拉取的时候channel可能没有任何数据。
-EventTakeSuccessCount	sink成功读取的事件的总数量
-StartTime	channel启动的时间（毫秒）
-StopTime	channel停止的时间（毫秒）
-ChannelSize	目前channel中事件的总数量
-ChannelFillPercentage	channel占用百分比
-ChannelCapacity	channel的容量
-第5章 自定义Source
-5.1 介绍
-Source是负责接收数据到Flume Agent的组件。Source组件可以处理各种类型、各种格式的日志数据，包括avro、thrift、exec、jms、spooling directory、netcat、sequence generator、syslog、http、legacy。官方提供的source类型已经很多，但是有时候并不能满足实际开发当中的需求，此时我们就需要根据实际需求自定义某些source。
-官方也提供了自定义source的接口：
-https://flume.apache.org/FlumeDeveloperGuide.html#source根据官方说明自定义MySource需要继承AbstractSource类并实现Configurable和PollableSource接口。
-实现相应方法：
-getBackOffSleepIncrement()//暂不用
-getMaxBackOffSleepInterval()//暂不用
-configure(Context context)//初始化context（读取配置文件内容）
-process()//获取数据封装成event并写入channel，这个方法将被循环调用。
-使用场景：读取MySQL数据或者其他文件系统。
-5.2 需求
-使用flume接收数据，并给每条数据添加前缀，输出到控制台。前缀可从flume配置文件中配置。
+```
 
-5.2 分析
+selinux本次生效关闭必须重启，如果此时不想重启，可以临时生效之：
+	sudo setenforce 0
 
-5.3 编码
+5. 启动ganglia
+   sudo service httpd start
+   sudo service gmetad start
+   sudo service gmond start
+   6) 打开网页浏览ganglia页面
+   http://192.168.1.102/ganglia
+   尖叫提示：如果完成以上操作依然出现权限不足错误，请修改/var/lib/ganglia目录的权限：
+   [atguigu@hadoop102 flume]$ sudo chmod -R 777 /var/lib/ganglia
+
+
+
+## 自定义Source
+
+官方说明：
+   https://flume.apache.org/FlumeDeveloperGuide.html#source根据官方说明自定义MySource需要继承AbstractSource类并实现Configurable和PollableSource接口。
+
+需求
+   使用flume接收数据，并给每条数据添加前缀，输出到控制台。前缀可从flume配置文件中配置。
+
+
 导入pom依赖
-<dependencies>
-    <dependency>
+
+```
+<dependency>
         <groupId>org.apache.flume</groupId>
         <artifactId>flume-ng-core</artifactId>
         <version>1.7.0</version>
 </dependency>
+```
 
-</dependencies>
+```
 
-package com.atguigu;
-
-import org.apache.flume.Context;
-import org.apache.flume.EventDeliveryException;
-import org.apache.flume.PollableSource;
-import org.apache.flume.conf.Configurable;
-import org.apache.flume.event.SimpleEvent;
-import org.apache.flume.source.AbstractSource;
-
-import java.util.HashMap;
-
-public class MySource extends AbstractSource implements Configurable, PollableSource {
-
-    //定义配置文件将来要读取的字段
-    private Long delay;
+/*
+    总结：事件含有两部分信息 头信息和body信息，  头信息是一个map bidy是一个字节数组
+     configure(Context context)//初始化context（读取配置文件内容）
+   process()//获取数据封装成event并写入channel，这个方法将被循环调用。
+   使用场景：读取MySQL数据或者其他文件系统
+ */
+public class Mysource2 extends AbstractSource implements Configurable, PollableSource {
+    private Long delay ;
     private String field;
-    
-    //初始化配置信息
-    @Override
-    public void configure(Context context) {
-        delay = context.getLong("delay");
-        field = context.getString("field", "Hello!");
-    }
-    
+
+    /**
+     *
+     * @return
+     * @throws EventDeliveryException
+     */
     @Override
     public Status process() throws EventDeliveryException {
-    
-        try {
-            //创建事件头信息
-            HashMap<String, String> hearderMap = new HashMap<>();
-            //创建事件
-            SimpleEvent event = new SimpleEvent();
-            //循环封装事件
-            for (int i = 0; i < 5; i++) {
-                //给事件设置头信息
-                event.setHeaders(hearderMap);
-                //给事件设置内容
-                event.setBody((field + i).getBytes());
-                //将事件写入channel
-                getChannelProcessor().processEvent(event);
+        //创建事件头信息
+        HashMap<String, String> hashMap = new HashMap<>();
+        //创建事件
+        SimpleEvent event= new SimpleEvent();
+        //循环封装事件
+        for(int i=0; i<5; i++){
+            //给事件设置头信息
+            event.setHeaders(hashMap);
+            //给事件设置内容
+            event.setBody((field+i).getBytes());
+            //将事件写入channel
+            getChannelProcessor().processEvent(event);
+            try {
                 Thread.sleep(delay);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                return Status.BACKOFF;  //返回状态信息，回滚
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Status.BACKOFF;
         }
-        return Status.READY;
+
+        return Status.READY; //正常信息
     }
-    
+
     @Override
     public long getBackOffSleepIncrement() {
         return 0;
     }
-    
+
     @Override
     public long getMaxBackOffSleepInterval() {
         return 0;
     }
+
+    /**
+     *  获取配置信息--通过context上下文获取配置信息
+     * @param context
+     */
+    @Override
+    public void configure(Context context) {
+        context.getLong("delay");
+        context.getString("field","hello");
+    }
 }
-5.4 测试
+
+```
+
+######  测试
+
 1）打包
 将写好的代码打包，并放到flume的lib目录（/opt/module/flume）下。
 2）配置文件
+
+```
 # Name the components on this agent
 a1.sources = r1
 a1.sinks = k1
@@ -693,103 +759,94 @@ a1.channels.c1.transactionCapacity = 100
 # Bind the source and sink to the channel
 a1.sources.r1.channels = c1
 a1.sinks.k1.channel = c1
-3）开启任务
-[atguigu@hadoop102 flume]$ pwd
-/opt/module/flume
-[atguigu@hadoop102 flume]$ bin/flume-ng agent -c conf/ -f job/mysource.conf -n a1 -Dflume.root.logger=INFO,console
-4）结果展示
+```
 
-第6章 自定义Sink
-6.1 介绍
-Sink不断地轮询Channel中的事件且批量地移除它们，并将这些事件批量写入到存储或索引系统、或者被发送到另一个Flume Agent。
+3）开启任务
+
+```
+ bin/flume-ng agent -c conf/ -f job/mysource.conf -n a1 -Dflume.root.logger=INFO,console
+```
+
+
+
+
+## 自定义Sink
+
+​	Sink不断地轮询Channel中的事件且批量地移除它们，并将这些事件批量写入到存储或索引系统、或者被发送到另一个Flume Agent。
+
 Sink是完全事务性的。在从Channel批量删除数据之前，每个Sink用Channel启动一个事务。批量事件一旦成功写出到存储系统或下一个Flume Agent，Sink就利用Channel提交事务。事务一旦被提交，该Channel从自己的内部缓冲区删除事件。
-Sink组件目的地包括hdfs、logger、avro、thrift、ipc、file、null、HBase、solr、自定义。官方提供的Sink类型已经很多，但是有时候并不能满足实际开发当中的需求，此时我们就需要根据实际需求自定义某些Sink。
+
+
 官方也提供了自定义source的接口：
 https://flume.apache.org/FlumeDeveloperGuide.html#sink根据官方说明自定义MySink需要继承AbstractSink类并实现Configurable接口。
 实现相应方法：
-configure(Context context)//初始化context（读取配置文件内容）
-process()//从Channel读取获取数据（event），这个方法将被循环调用。
-使用场景：读取Channel数据写入MySQL或者其他文件系统。
-6.2 需求
-使用flume接收数据，并在Sink端给每条数据添加前缀和后缀，输出到控制台。前后缀可在flume任务配置文件中配置。
-流程分析：
 
-6.3 编码
-package com.atguigu;
+##### 需求:
 
-import org.apache.flume.*;
-import org.apache.flume.conf.Configurable;
-import org.apache.flume.sink.AbstractSink;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+ 使用flume接收数据，并在Sink端给每条数据添加前缀和后缀，输出到控制台。前后缀可在flume任务配置文件中配置。
 
-public class MySink extends AbstractSink implements Configurable {
+```java
+//configure(Context context)//初始化context（读取配置文件内容）
+//process()//从Channel读取获取数据（event），这个方法将被循环调用。
 
-    //创建Logger对象
-    private static final Logger LOG = LoggerFactory.getLogger(AbstractSink.class);
-    
-    private String prefix;
+public class MySink2 extends AbstractSink implements Configurable {
+//    private Logger
+    private Long delay;
     private String suffix;
-    
+    private  Logger logger;
+
     @Override
     public Status process() throws EventDeliveryException {
-    
-        //声明返回值状态信息
+        //声明返回状态信息
         Status status;
-    
-        //获取当前Sink绑定的Channel
+        //获取当前sink绑定的channel
         Channel ch = getChannel();
-    
+
         //获取事务
-        Transaction txn = ch.getTransaction();
-    
+        Transaction transaction = ch.getTransaction();
         //声明事件
         Event event;
-    
         //开启事务
-        txn.begin();
-    
-        //读取Channel中的事件，直到读取到事件结束循环
-        while (true) {
+        transaction.begin();
+        //读取channel中的事件
+        while(true){
             event = ch.take();
-            if (event != null) {
+            if(event!= null){
                 break;
             }
         }
+       logger= LoggerFactory.getLogger(MySink2.class);
         try {
-            //处理事件（打印）
-            LOG.info(prefix + new String(event.getBody()) + suffix);
-    
-            //事务提交
-            txn.commit();
-            status = Status.READY;
+            logger.info(suffix+ new String(event.getBody()));
+            //提交事务
+            transaction.commit();
         } catch (Exception e) {
-    
+            e.printStackTrace();
             //遇到异常，事务回滚
-            txn.rollback();
-            status = Status.BACKOFF;
+            transaction.rollback();
+            return Status.BACKOFF;
         } finally {
-    
             //关闭事务
-            txn.close();
+            transaction.close();
         }
-        return status;
+        return Status.READY;
+
     }
-    
+
     @Override
     public void configure(Context context) {
-    
-        //读取配置文件内容，有默认值
-        prefix = context.getString("prefix", "hello:");
-    
-        //读取配置文件内容，无默认值
         suffix = context.getString("suffix");
+        delay = context.getLong("delay");
     }
 }
-6.4 测试
-1）打包
-将写好的代码打包，并放到flume的lib目录（/opt/module/flume）下。
+```
+
+测试
+
+1）打包:将写好的代码打包，并放到flume的lib目录（/opt/module/flume）下。
 2）配置文件
+
+```
 # Name the components on this agent
 a1.sources = r1
 a1.sinks = k1
@@ -802,8 +859,8 @@ a1.sources.r1.port = 44444
 
 # Describe the sink
 a1.sinks.k1.type = com.atguigu.MySink
-#a1.sinks.k1.prefix = atguigu:
-a1.sinks.k1.suffix = :atguigu
+#a1.sinks.k1.prefix = wangyg:
+a1.sinks.k1.suffix = :bigdata
 
 # Use a channel which buffers events in memory
 a1.channels.c1.type = memory
@@ -813,48 +870,228 @@ a1.channels.c1.transactionCapacity = 100
 # Bind the source and sink to the channel
 a1.sources.r1.channels = c1
 a1.sinks.k1.channel = c1
-3）开启任务
-[atguigu@hadoop102 flume]$ pwd
-/opt/module/flume
-[atguigu@hadoop102 flume]$ bin/flume-ng agent -c conf/ -f job/mysink.conf -n a1 -Dflume.root.logger=INFO,console
-[atguigu@hadoop102 ~]$ nc localhost 44444
-hello
-OK
-atguigu
-OK
-4）结果展示
+```
 
-第7章 知识扩展
-7.1 常见正则表达式语法
-元字符	描述
-^	匹配输入字符串的开始位置。如果设置了RegExp对象的Multiline属性，^也匹配“\n”或“\r”之后的位置。
-$	匹配输入字符串的结束位置。如果设置了RegExp对象的Multiline属性，$也匹配“\n”或“\r”之前的位置。
-*	匹配前面的子表达式任意次。例如，zo*能匹配“z”，“zo”以及“zoo”。*等价于{0,}。
-+	匹配前面的子表达式一次或多次(大于等于1次）。例如，“zo+”能匹配“zo”以及“zoo”，但不能匹配“z”。+等价于{1,}。
-  [a-z]	字符范围。匹配指定范围内的任意字符。例如，“[a-z]”可以匹配“a”到“z”范围内的任意小写字母字符。
-  注意:只有连字符在字符组内部时,并且出现在两个字符之间时,才能表示字符的范围; 如果出字符组的开头,则只能表示连字符本身.
-  7.2 自定义MySQLSource
-  7.2.1 自定义Source说明
-  实时监控MySQL，从MySQL中获取数据传输到HDFS或者其他存储框架，所以此时需要我们自己实现MySQLSource。
-  官方也提供了自定义source的接口：
-  官网说明：https://flume.apache.org/FlumeDeveloperGuide.html#source
-  7.2.2 自定义MySQLSource组成
-  图6-1 自定义MySQLSource组成
-  7.2.3 自定义MySQLSource步骤
-  根据官方说明自定义mysqlsource需要继承AbstractSource类并实现Configurable和PollableSource接口。
-  实现相应方法：
-  getBackOffSleepIncrement()//暂不用
-  getMaxBackOffSleepInterval()//暂不用
-  configure(Context context)//初始化context
-  process()//获取数据（从mysql获取数据，业务处理比较复杂，所以我们定义一个专门的类——SQLSourceHelper来处理跟mysql的交互），封装成event并写入channel，这个方法被循环调用
-  stop()//关闭相关的资源
+```
+ bin/flume-ng agent -c conf/ -f job/mysink.conf -n a1 -Dflume.root.logger=INFO,console
+ nc localhost 44444
+```
+
+
+
+##### 自定义source 实现断点续传操作
+
+```java
+
+import org.apache.commons.io.FileUtils;
+import org.apache.flume.Context;
+import org.apache.flume.Event;
+import org.apache.flume.EventDrivenSource;
+import org.apache.flume.channel.ChannelProcessor;
+import org.apache.flume.conf.Configurable;
+import org.apache.flume.event.EventBuilder;
+import org.apache.flume.source.AbstractSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.charset.Charset;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * 自定义source，实现多点续传
+ */
+@SuppressWarnings("all")
+public class MyFileSource2 extends AbstractSource implements Configurable, EventDrivenSource {
+    //模拟实现多点续传功能
+    //logger日志
+    private static final Logger logger = LoggerFactory.getLogger(MyFileSource2.class);
+    //文件路径
+    private String filePath;
+    //offsetPath --偏移量
+    private String offsetPath;
+    //interval 间隙
+    private Long interval;
+    //charset;
+    private String charset;
+    //juc 线程池
+    private ExecutorService executorService;
+    //内部类对象引用
+    private  FileSourceRunnable runnable;
+
+    /**
+     * 获取配置信息
+     *
+     * @param context
+     */
+    @Override
+    public void configure(Context context) {
+        filePath = context.getString("filePath");
+        offsetPath = context.getString("offsetPath");
+        interval = context.getLong("interval", 1000L);
+        charset = context.getString("charset", "UTF-8");
+    }
+
+    //start()方法
+    @Override
+    public synchronized void start() {
+        //创建一个线程池，得到一个channel对象
+        executorService = Executors.newSingleThreadExecutor();
+        //获取channel
+        ChannelProcessor channelProcessor = getChannelProcessor();
+        //创建一个内部类对象
+        runnable= new FileSourceRunnable(filePath, offsetPath, interval, charset, channelProcessor);
+        //将executor放入线程池中，进行执行
+        executorService.execute(runnable);
+
+        //调用start方法
+        super.start();
+    }
+
+    /**
+     * 关闭方法
+     */
+    @Override
+    public synchronized void stop() {
+        //线程停止
+        runnable.setFlag(false);
+        //停掉线程池
+        executorService.shutdown();
+        while(!executorService.isTerminated()){
+            logger.debug("Waiting for exec executor service to stop");
+            try {
+                //阻塞知道所有任务完成
+                executorService.awaitTermination(500, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                logger.debug("Interrupted while waiting for exec executor service "
+                        + "to stop. Just exiting.");
+                Thread.currentThread().interrupt();
+            }
+        }
+        super.stop();
+
+    }
+
+    @SuppressWarnings("all")
+    //新增一个内部类
+    public static class FileSourceRunnable implements Runnable {
+        private String filepath;
+        private String offsetPath;
+        private Long interval;
+        private String charset;
+        private ChannelProcessor channelProcessor;
+
+        private Long offset = 0L;
+        private File osfile;
+        private boolean flag = true;
+        private RandomAccessFile raf;
+
+        public FileSourceRunnable(String filepath, String offsetPath, Long interval, String charset, ChannelProcessor channelProcessor) {
+            this.filepath = filepath;
+            this.offsetPath = offsetPath;
+            this.interval = interval;
+            this.charset = charset;
+            this.channelProcessor = channelProcessor;
+
+            //将偏移量文件装进file对象里
+            osfile = new File(offsetPath);
+            //判断是否有偏移量文件，如果不存在就创建一个
+            if (!osfile.exists()) {
+                try {
+                    osfile.createNewFile();
+                } catch (IOException e) {
+                    logger.debug("create osfile error", e);
+                }
+            }
+            //如果存在，判断文件里有没有内容，先得到文件中的内容转为string
+            try {
+                String offsetStr = FileUtils.readFileToString(osfile);
+                //判断是否有内容
+                if (offsetStr != null && !"".equals(offsetStr)) {
+                    offset = Long.parseLong(offsetStr);
+                }
+            } catch (IOException e) {
+                logger.debug("read offset error", e);
+            }
+            //如果有偏移量，就接着读，没有的话从头读，new 一个随机读取文件内容的对象
+            try {
+                raf = new RandomAccessFile(filepath, "r");
+                raf.seek(offset);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+                logger.debug("file not found error", e);
+            } catch (IOException e) {
+                e.printStackTrace();
+                logger.debug("read offset error", e);
+            }
+        }
+
+        @Override
+        public void run() {
+            //flag--定期读取文件，判断是否有新内容
+            while (flag) {
+                try {
+                    String line = raf.readLine();
+                    //将数据封装成event对象
+                    if (line != null) {
+                        Event event = EventBuilder.withBody(line, Charset.forName(charset));
+                        //event对象发送给channel
+                        channelProcessor.processEvent(event);
+                        //获取新的偏移量，在更新偏移量
+                        offset = raf.getFilePointer(); //获取新的品一辆
+                        FileUtils.writeStringToFile(osfile
+                                , offset + ""); //转为字符串类型
+                    } else {
+                        Thread.sleep(interval);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    logger.debug("read line error", e);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    logger.debug("thread sleep error", e);
+                }
+
+            }
+        }
+
+        //对外提供一个接口，用于设置是否定期读取文件
+        public void setFlag(boolean flag) {
+            this.flag = flag;
+        }
+    }
+}
+```
+
+
+
+##### 自定义MySQLSource
+
+ 自定义Source说明
+实时监控MySQL，从MySQL中获取数据传输到HDFS或者其他存储框架，所以此时需要我们自己实现MySQLSource。
+官方也提供了自定义source的接口：
+官网说明：https://flume.apache.org/FlumeDeveloperGuide.html#source
+
+根据官方说明自定义mysqlsource需要继承AbstractSource类并实现Configurable和PollableSource接口。
+实现相应方法：
+
+```
+configure(Context context)//初始化context
+process()//获取数据（从mysql获取数据，业务处理比较复杂，所以我们定义一个专门的类——SQLSourceHelper来处理跟mysql的交互），封装成event并写入channel，这个方法被循环调用
+stop()//关闭相关的资源
+```
 
 PollableSource：从source中提取数据，将其发送到channel。
 Configurable：实现了Configurable的任何类都含有一个context，使用context获取配置信息。
-7.2.4 代码实现
 1、导入pom依赖
-<dependencies>
-    <dependency>
+
+```
+ <dependency>
         <groupId>org.apache.flume</groupId>
         <artifactId>flume-ng-core</artifactId>
         <version>1.7.0</version>
@@ -864,7 +1101,8 @@ Configurable：实现了Configurable的任何类都含有一个context，使用c
         <artifactId>mysql-connector-java</artifactId>
         <version>5.1.27</version>
     </dependency>
-</dependencies>
+```
+
 2、添加配置信息
 在classpath下添加jdbc.properties和log4j.properties
 jdbc.properties:
@@ -911,6 +1149,8 @@ getStatusDBIndex(int startFrom)	获取元数据表中的offset
 queryOne(String sql)	获取元数据表中的offset实际sql语句执行方法
 close()	关闭资源
 3)代码实现：
+
+```
 package com.atguigu.source;
 
 import org.apache.flume.Context;
@@ -927,278 +1167,280 @@ import java.util.Properties;
 
 public class SQLSourceHelper {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SQLSourceHelper.class);
-    
-    private int runQueryDelay, //两次查询的时间间隔
-            startFrom,            //开始id
-            currentIndex,	     //当前id
-            recordSixe = 0,      //每次查询返回结果的条数
-            maxRow;                //每次查询的最大条数
 
+private static final Logger LOG = LoggerFactory.getLogger(SQLSourceHelper.class);
 
-    private String table,       //要操作的表
-            columnsToSelect,     //用户传入的查询的列
-            customQuery,          //用户传入的查询语句
-            query,                 //构建的查询语句
-            defaultCharsetResultSet;//编码集
-    
-    //上下文，用来获取配置文件
-    private Context context;
-    
-    //为定义的变量赋值（默认值），可在flume任务的配置文件中修改
-    private static final int DEFAULT_QUERY_DELAY = 10000;
-    private static final int DEFAULT_START_VALUE = 0;
-    private static final int DEFAULT_MAX_ROWS = 2000;
-    private static final String DEFAULT_COLUMNS_SELECT = "*";
-    private static final String DEFAULT_CHARSET_RESULTSET = "UTF-8";
-    
-    private static Connection conn = null;
-    private static PreparedStatement ps = null;
-    private static String connectionURL, connectionUserName, connectionPassword;
-    
-    //加载静态资源
-    static {
-        Properties p = new Properties();
-        try {
-            p.load(SQLSourceHelper.class.getClassLoader().getResourceAsStream("jdbc.properties"));
-            connectionURL = p.getProperty("dbUrl");
-            connectionUserName = p.getProperty("dbUser");
-            connectionPassword = p.getProperty("dbPassword");
-            Class.forName(p.getProperty("dbDriver"));
-        } catch (IOException | ClassNotFoundException e) {
-            LOG.error(e.toString());
-        }
+private int runQueryDelay, //两次查询的时间间隔
+        startFrom,            //开始id
+        currentIndex,	     //当前id
+        recordSixe = 0,      //每次查询返回结果的条数
+        maxRow;                //每次查询的最大条数
+
+private String table,       //要操作的表
+        columnsToSelect,     //用户传入的查询的列
+        customQuery,          //用户传入的查询语句
+        query,                 //构建的查询语句
+        defaultCharsetResultSet;//编码集
+
+//上下文，用来获取配置文件
+private Context context;
+
+//为定义的变量赋值（默认值），可在flume任务的配置文件中修改
+private static final int DEFAULT_QUERY_DELAY = 10000;
+private static final int DEFAULT_START_VALUE = 0;
+private static final int DEFAULT_MAX_ROWS = 2000;
+private static final String DEFAULT_COLUMNS_SELECT = "*";
+private static final String DEFAULT_CHARSET_RESULTSET = "UTF-8";
+
+private static Connection conn = null;
+private static PreparedStatement ps = null;
+private static String connectionURL, connectionUserName, connectionPassword;
+
+//加载静态资源
+static {
+    Properties p = new Properties();
+    try {
+        p.load(SQLSourceHelper.class.getClassLoader().getResourceAsStream("jdbc.properties"));
+        connectionURL = p.getProperty("dbUrl");
+        connectionUserName = p.getProperty("dbUser");
+        connectionPassword = p.getProperty("dbPassword");
+        Class.forName(p.getProperty("dbDriver"));
+    } catch (IOException | ClassNotFoundException e) {
+        LOG.error(e.toString());
     }
-    
-    //获取JDBC连接
-    private static Connection InitConnection(String url, String user, String pw) {
-        try {
-            Connection conn = DriverManager.getConnection(url, user, pw);
-            if (conn == null)
-                throw new SQLException();
-            return conn;
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
+}
+
+//获取JDBC连接
+private static Connection InitConnection(String url, String user, String pw) {
+    try {
+        Connection conn = DriverManager.getConnection(url, user, pw);
+        if (conn == null)
+            throw new SQLException();
+        return conn;
+    } catch (SQLException e) {
+        e.printStackTrace();
     }
-    
-    //构造方法
-    SQLSourceHelper(Context context) throws ParseException {
-        //初始化上下文
-        this.context = context;
-    
-        //有默认值参数：获取flume任务配置文件中的参数，读不到的采用默认值
-        this.columnsToSelect = context.getString("columns.to.select", DEFAULT_COLUMNS_SELECT);
-        this.runQueryDelay = context.getInteger("run.query.delay", DEFAULT_QUERY_DELAY);
-        this.startFrom = context.getInteger("start.from", DEFAULT_START_VALUE);
-        this.defaultCharsetResultSet = context.getString("default.charset.resultset", DEFAULT_CHARSET_RESULTSET);
-    
-        //无默认值参数：获取flume任务配置文件中的参数
-        this.table = context.getString("table");
-        this.customQuery = context.getString("custom.query");
-        connectionURL = context.getString("connection.url");
-        connectionUserName = context.getString("connection.user");
-        connectionPassword = context.getString("connection.password");
+    return null;
+}
+
+//构造方法
+SQLSourceHelper(Context context) throws ParseException {
+    //初始化上下文
+    this.context = context;
+
+    //有默认值参数：获取flume任务配置文件中的参数，读不到的采用默认值
+    this.columnsToSelect = context.getString("columns.to.select", DEFAULT_COLUMNS_SELECT);
+    this.runQueryDelay = context.getInteger("run.query.delay", DEFAULT_QUERY_DELAY);
+    this.startFrom = context.getInteger("start.from", DEFAULT_START_VALUE);
+    this.defaultCharsetResultSet = context.getString("default.charset.resultset", DEFAULT_CHARSET_RESULTSET);
+
+    //无默认值参数：获取flume任务配置文件中的参数
+    this.table = context.getString("table");
+    this.customQuery = context.getString("custom.query");
+    connectionURL = context.getString("connection.url");
+    connectionUserName = context.getString("connection.user");
+    connectionPassword = context.getString("connection.password");
+    conn = InitConnection(connectionURL, connectionUserName, connectionPassword);
+
+    //校验相应的配置信息，如果没有默认值的参数也没赋值，抛出异常
+    checkMandatoryProperties();
+    //获取当前的id
+    currentIndex = getStatusDBIndex(startFrom);
+    //构建查询语句
+    query = buildQuery();
+}
+
+//校验相应的配置信息（表，查询语句以及数据库连接的参数）
+private void checkMandatoryProperties() {
+    if (table == null) {
+        throw new ConfigurationException("property table not set");
+    }
+    if (connectionURL == null) {
+        throw new ConfigurationException("connection.url property not set");
+    }
+    if (connectionUserName == null) {
+        throw new ConfigurationException("connection.user property not set");
+    }
+    if (connectionPassword == null) {
+        throw new ConfigurationException("connection.password property not set");
+    }
+}
+
+//构建sql语句
+private String buildQuery() {
+    String sql = "";
+    //获取当前id
+    currentIndex = getStatusDBIndex(startFrom);
+    LOG.info(currentIndex + "");
+    if (customQuery == null) {
+        sql = "SELECT " + columnsToSelect + " FROM " + table;
+    } else {
+        sql = customQuery;
+    }
+    StringBuilder execSql = new StringBuilder(sql);
+    //以id作为offset
+    if (!sql.contains("where")) {
+        execSql.append(" where ");
+        execSql.append("id").append(">").append(currentIndex);
+        return execSql.toString();
+    } else {
+        int length = execSql.toString().length();
+        return execSql.toString().substring(0, length - String.valueOf(currentIndex).length()) + currentIndex;
+    }
+}
+
+//执行查询
+List<List<Object>> executeQuery() {
+    try {
+        //每次执行查询时都要重新生成sql，因为id不同
+        customQuery = buildQuery();
+        //存放结果的集合
+        List<List<Object>> results = new ArrayList<>();
+        if (ps == null) {
+            //
+            ps = conn.prepareStatement(customQuery);
+        }
+        ResultSet result = ps.executeQuery(customQuery);
+        while (result.next()) {
+            //存放一条数据的集合（多个列）
+            List<Object> row = new ArrayList<>();
+            //将返回结果放入集合
+            for (int i = 1; i <= result.getMetaData().getColumnCount(); i++) {
+                row.add(result.getObject(i));
+            }
+            results.add(row);
+        }
+        LOG.info("execSql:" + customQuery + "\nresultSize:" + results.size());
+        return results;
+    } catch (SQLException e) {
+        LOG.error(e.toString());
+        // 重新连接
         conn = InitConnection(connectionURL, connectionUserName, connectionPassword);
-    
-        //校验相应的配置信息，如果没有默认值的参数也没赋值，抛出异常
-        checkMandatoryProperties();
-        //获取当前的id
-        currentIndex = getStatusDBIndex(startFrom);
-        //构建查询语句
-        query = buildQuery();
     }
-    
-    //校验相应的配置信息（表，查询语句以及数据库连接的参数）
-    private void checkMandatoryProperties() {
-        if (table == null) {
-            throw new ConfigurationException("property table not set");
-        }
-        if (connectionURL == null) {
-            throw new ConfigurationException("connection.url property not set");
-        }
-        if (connectionUserName == null) {
-            throw new ConfigurationException("connection.user property not set");
-        }
-        if (connectionPassword == null) {
-            throw new ConfigurationException("connection.password property not set");
-        }
-    }
-    
-    //构建sql语句
-    private String buildQuery() {
-        String sql = "";
-        //获取当前id
-        currentIndex = getStatusDBIndex(startFrom);
-        LOG.info(currentIndex + "");
-        if (customQuery == null) {
-            sql = "SELECT " + columnsToSelect + " FROM " + table;
-        } else {
-            sql = customQuery;
-        }
-        StringBuilder execSql = new StringBuilder(sql);
-        //以id作为offset
-        if (!sql.contains("where")) {
-            execSql.append(" where ");
-            execSql.append("id").append(">").append(currentIndex);
-            return execSql.toString();
-        } else {
-            int length = execSql.toString().length();
-            return execSql.toString().substring(0, length - String.valueOf(currentIndex).length()) + currentIndex;
-        }
-    }
-    
-    //执行查询
-    List<List<Object>> executeQuery() {
-        try {
-            //每次执行查询时都要重新生成sql，因为id不同
-            customQuery = buildQuery();
-            //存放结果的集合
-            List<List<Object>> results = new ArrayList<>();
-            if (ps == null) {
-                //
-                ps = conn.prepareStatement(customQuery);
-            }
-            ResultSet result = ps.executeQuery(customQuery);
-            while (result.next()) {
-                //存放一条数据的集合（多个列）
-                List<Object> row = new ArrayList<>();
-                //将返回结果放入集合
-                for (int i = 1; i <= result.getMetaData().getColumnCount(); i++) {
-                    row.add(result.getObject(i));
-                }
-                results.add(row);
-            }
-            LOG.info("execSql:" + customQuery + "\nresultSize:" + results.size());
-            return results;
-        } catch (SQLException e) {
-            LOG.error(e.toString());
-            // 重新连接
-            conn = InitConnection(connectionURL, connectionUserName, connectionPassword);
-        }
-        return null;
-    }
-    
-    //将结果集转化为字符串，每一条数据是一个list集合，将每一个小的list集合转化为字符串
-    List<String> getAllRows(List<List<Object>> queryResult) {
-        List<String> allRows = new ArrayList<>();
-        if (queryResult == null || queryResult.isEmpty())
-            return allRows;
-        StringBuilder row = new StringBuilder();
-        for (List<Object> rawRow : queryResult) {
-            Object value = null;
-            for (Object aRawRow : rawRow) {
-                value = aRawRow;
-                if (value == null) {
-                    row.append(",");
-                } else {
-                    row.append(aRawRow.toString()).append(",");
-                }
-            }
-            allRows.add(row.toString());
-            row = new StringBuilder();
-        }
+    return null;
+}
+
+//将结果集转化为字符串，每一条数据是一个list集合，将每一个小的list集合转化为字符串
+List<String> getAllRows(List<List<Object>> queryResult) {
+    List<String> allRows = new ArrayList<>();
+    if (queryResult == null || queryResult.isEmpty())
         return allRows;
-    }
-    
-    //更新offset元数据状态，每次返回结果集后调用。必须记录每次查询的offset值，为程序中断续跑数据时使用，以id为offset
-    void updateOffset2DB(int size) {
-        //以source_tab做为KEY，如果不存在则插入，存在则更新（每个源表对应一条记录）
-        String sql = "insert into flume_meta(source_tab,currentIndex) VALUES('"
-                + this.table
-                + "','" + (recordSixe += size)
-                + "') on DUPLICATE key update source_tab=values(source_tab),currentIndex=values(currentIndex)";
-        LOG.info("updateStatus Sql:" + sql);
-        execSql(sql);
-    }
-    
-    //执行sql语句
-    private void execSql(String sql) {
-        try {
-            ps = conn.prepareStatement(sql);
-            LOG.info("exec::" + sql);
-            ps.execute();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-    
-    //获取当前id的offset
-    private Integer getStatusDBIndex(int startFrom) {
-        //从flume_meta表中查询出当前的id是多少
-        String dbIndex = queryOne("select currentIndex from flume_meta where source_tab='" + table + "'");
-        if (dbIndex != null) {
-            return Integer.parseInt(dbIndex);
-        }
-        //如果没有数据，则说明是第一次查询或者数据表中还没有存入数据，返回最初传入的值
-        return startFrom;
-    }
-    
-    //查询一条数据的执行语句(当前id)
-    private String queryOne(String sql) {
-        ResultSet result = null;
-        try {
-            ps = conn.prepareStatement(sql);
-            result = ps.executeQuery();
-            while (result.next()) {
-                return result.getString(1);
+    StringBuilder row = new StringBuilder();
+    for (List<Object> rawRow : queryResult) {
+        Object value = null;
+        for (Object aRawRow : rawRow) {
+            value = aRawRow;
+            if (value == null) {
+                row.append(",");
+            } else {
+                row.append(aRawRow.toString()).append(",");
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
-        return null;
+        allRows.add(row.toString());
+        row = new StringBuilder();
     }
-    
-    //关闭相关资源
-    void close() {
-        try {
-            ps.close();
-            conn.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
+    return allRows;
+}
+
+//更新offset元数据状态，每次返回结果集后调用。必须记录每次查询的offset值，为程序中断续跑数据时使用，以id为offset
+void updateOffset2DB(int size) {
+    //以source_tab做为KEY，如果不存在则插入，存在则更新（每个源表对应一条记录）
+    String sql = "insert into flume_meta(source_tab,currentIndex) VALUES('"
+            + this.table
+            + "','" + (recordSixe += size)
+            + "') on DUPLICATE key update source_tab=values(source_tab),currentIndex=values(currentIndex)";
+    LOG.info("updateStatus Sql:" + sql);
+    execSql(sql);
+}
+
+//执行sql语句
+private void execSql(String sql) {
+    try {
+        ps = conn.prepareStatement(sql);
+        LOG.info("exec::" + sql);
+        ps.execute();
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+}
+
+//获取当前id的offset
+private Integer getStatusDBIndex(int startFrom) {
+    //从flume_meta表中查询出当前的id是多少
+    String dbIndex = queryOne("select currentIndex from flume_meta where source_tab='" + table + "'");
+    if (dbIndex != null) {
+        return Integer.parseInt(dbIndex);
+    }
+    //如果没有数据，则说明是第一次查询或者数据表中还没有存入数据，返回最初传入的值
+    return startFrom;
+}
+
+//查询一条数据的执行语句(当前id)
+private String queryOne(String sql) {
+    ResultSet result = null;
+    try {
+        ps = conn.prepareStatement(sql);
+        result = ps.executeQuery();
+        while (result.next()) {
+            return result.getString(1);
         }
+    } catch (SQLException e) {
+        e.printStackTrace();
     }
-    
-    int getCurrentIndex() {
-        return currentIndex;
+    return null;
+}
+
+//关闭相关资源
+void close() {
+    try {
+        ps.close();
+        conn.close();
+    } catch (SQLException e) {
+        e.printStackTrace();
     }
-    
-    void setCurrentIndex(int newValue) {
-        currentIndex = newValue;
-    }
-    
-    int getRunQueryDelay() {
-        return runQueryDelay;
-    }
-    
-    String getQuery() {
-        return query;
-    }
-    
-    String getConnectionURL() {
-        return connectionURL;
-    }
-    
-    private boolean isCustomQuerySet() {
-        return (customQuery != null);
-    }
-    
-    Context getContext() {
-        return context;
-    }
-    
-    public String getConnectionUserName() {
-        return connectionUserName;
-    }
-    
-    public String getConnectionPassword() {
-        return connectionPassword;
-    }
-    
-    String getDefaultCharsetResultSet() {
-        return defaultCharsetResultSet;
-    }
+}
+
+int getCurrentIndex() {
+    return currentIndex;
+}
+
+void setCurrentIndex(int newValue) {
+    currentIndex = newValue;
+}
+
+int getRunQueryDelay() {
+    return runQueryDelay;
+}
+
+String getQuery() {
+    return query;
+}
+
+String getConnectionURL() {
+    return connectionURL;
+}
+
+private boolean isCustomQuerySet() {
+    return (customQuery != null);
+}
+
+Context getContext() {
+    return context;
+}
+
+public String getConnectionUserName() {
+    return connectionUserName;
+}
+
+public String getConnectionPassword() {
+    return connectionPassword;
+}
+
+String getDefaultCharsetResultSet() {
+    return defaultCharsetResultSet;
+}
+
+
 }
 4、MySQLSource
 代码实现：
@@ -1221,77 +1463,82 @@ import java.util.List;
 
 public class SQLSource extends AbstractSource implements Configurable, PollableSource {
 
-    //打印日志
-    private static final Logger LOG = LoggerFactory.getLogger(SQLSource.class);
-    //定义sqlHelper
-    private SQLSourceHelper sqlSourceHelper;
 
+//打印日志
+private static final Logger LOG = LoggerFactory.getLogger(SQLSource.class);
+//定义sqlHelper
+private SQLSourceHelper sqlSourceHelper;
 
-    @Override
-    public long getBackOffSleepIncrement() {
-        return 0;
-    }
-    
-    @Override
-    public long getMaxBackOffSleepInterval() {
-        return 0;
-    }
-    
-    @Override
-    public void configure(Context context) {
-        try {
-            //初始化
-            sqlSourceHelper = new SQLSourceHelper(context);
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
-    }
-    
-    @Override
-    public Status process() throws EventDeliveryException {
-        try {
-            //查询数据表
-            List<List<Object>> result = sqlSourceHelper.executeQuery();
-            //存放event的集合
-            List<Event> events = new ArrayList<>();
-            //存放event头集合
-            HashMap<String, String> header = new HashMap<>();
-            //如果有返回数据，则将数据封装为event
-            if (!result.isEmpty()) {
-                List<String> allRows = sqlSourceHelper.getAllRows(result);
-                Event event = null;
-                for (String row : allRows) {
-                    event = new SimpleEvent();
-                    event.setBody(row.getBytes());
-                    event.setHeaders(header);
-                    events.add(event);
-                }
-                //将event写入channel
-                this.getChannelProcessor().processEventBatch(events);
-                //更新数据表中的offset信息
-                sqlSourceHelper.updateOffset2DB(result.size());
-            }
-            //等待时长
-            Thread.sleep(sqlSourceHelper.getRunQueryDelay());
-            return Status.READY;
-        } catch (InterruptedException e) {
-            LOG.error("Error procesing row", e);
-            return Status.BACKOFF;
-        }
-    }
-    
-    @Override
-    public synchronized void stop() {
-        LOG.info("Stopping sql source {} ...", getName());
-        try {
-            //关闭资源
-            sqlSourceHelper.close();
-        } finally {
-            super.stop();
-        }
+@Override
+public long getBackOffSleepIncrement() {
+    return 0;
+}
+
+@Override
+public long getMaxBackOffSleepInterval() {
+    return 0;
+}
+
+@Override
+public void configure(Context context) {
+    try {
+        //初始化
+        sqlSourceHelper = new SQLSourceHelper(context);
+    } catch (ParseException e) {
+        e.printStackTrace();
     }
 }
-7.2.5 测试
+
+@Override
+public Status process() throws EventDeliveryException {
+    try {
+        //查询数据表
+        List<List<Object>> result = sqlSourceHelper.executeQuery();
+        //存放event的集合
+        List<Event> events = new ArrayList<>();
+        //存放event头集合
+        HashMap<String, String> header = new HashMap<>();
+        //如果有返回数据，则将数据封装为event
+        if (!result.isEmpty()) {
+            List<String> allRows = sqlSourceHelper.getAllRows(result);
+            Event event = null;
+            for (String row : allRows) {
+                event = new SimpleEvent();
+                event.setBody(row.getBytes());
+                event.setHeaders(header);
+                events.add(event);
+            }
+            //将event写入channel
+            this.getChannelProcessor().processEventBatch(events);
+            //更新数据表中的offset信息
+            sqlSourceHelper.updateOffset2DB(result.size());
+        }
+        //等待时长
+        Thread.sleep(sqlSourceHelper.getRunQueryDelay());
+        return Status.READY;
+    } catch (InterruptedException e) {
+        LOG.error("Error procesing row", e);
+        return Status.BACKOFF;
+    }
+}
+
+@Override
+public synchronized void stop() {
+    LOG.info("Stopping sql source {} ...", getName());
+    try {
+        //关闭资源
+        sqlSourceHelper.close();
+    } finally {
+        super.stop();
+    }
+}
+
+
+}
+
+
+```
+
 1、jar包准备
 1) 将mysql驱动包放入flume的lib目录下
 [atguigu@hadoop102 flume]$ cp \
@@ -1303,95 +1550,61 @@ public class SQLSource extends AbstractSource implements Configurable, PollableS
 [atguigu@hadoop102 job]$ touch mysql.conf
 [atguigu@hadoop102 job]$ vim mysql.conf 
 2）添加如下内容
-# Name the components on this agent
-a1.sources = r1
-a1.sinks = k1
-a1.channels = c1
 
-# Describe/configure the source
-a1.sources.r1.type = com.atguigu.source.SQLSource  
-a1.sources.r1.connection.url = jdbc:mysql://192.168.1.102:3306/mysqlsource
-a1.sources.r1.connection.user = root  
-a1.sources.r1.connection.password = 000000  
-a1.sources.r1.table = student  
-a1.sources.r1.columns.to.select = *  
-#a1.sources.r1.incremental.column.name = id  
-#a1.sources.r1.incremental.value = 0 
-a1.sources.r1.run.query.delay=5000
-
-# Describe the sink
-a1.sinks.k1.type = logger
-
-# Describe the channel
-a1.channels.c1.type = memory
-a1.channels.c1.capacity = 1000
-a1.channels.c1.transactionCapacity = 100
-
-# Bind the source and sink to the channel
-a1.sources.r1.channels = c1
-a1.sinks.k1.channel = c1
-3、mysql表准备
-1) 创建mysqlsource数据库
-CREATE DATABASE mysqlsource；
-2) 在mysqlsource数据库下创建数据表student和元数据表flume_meta
-CREATE TABLE `student` (
-`id` int(11) NOT NULL AUTO_INCREMENT,
-`name` varchar(255) NOT NULL,
-PRIMARY KEY (`id`)
-);
-CREATE TABLE `flume_meta` (
-`source_tab` varchar(255) NOT NULL,
-`currentIndex` varchar(255) NOT NULL,
-PRIMARY KEY (`source_tab`)
-);
-3)向数据表中添加数据
-1 zhangsan
-2 lisi
-3 wangwu
-4zhaoliu
-4、测试并查看结果
-1)任务执行
-[atguigu@hadoop102 flume]$ bin/flume-ng agent --conf conf/ --name a1 \
---conf-file job/mysql.conf -Dflume.root.logger=INFO,console
-2)结果展示，如图所示：
-
-7.3 练习
 案例需求：
 1）flume-1监控hive.log日志，flume-1的数据传送给flume-2，flume-2将数据追加到本地文件，同时将数据传输到flume-3。
 2）flume-4监控本地另一个自己创建的文件any.txt，并将数据传送给flume-3。
 3）flume-3将汇总数据写入到HDFS。
 请先画出结构图，再开始编写任务脚本。
-第8章 企业真实面试题（重点）
-8.1 你是如何实现Flume数据传输的监控的
+
+
+
+## 企业真实面试题
+
+```
+1.如何实现Flume数据传输的监控的
 使用第三方框架Ganglia实时监控Flume。
-8.2 Flume的Source，Sink，Channel的作用？你们Source是什么类型？
-	1、作用
-（1）Source组件是专门用来收集数据的，可以处理各种类型、各种格式的日志数据，包括avro、thrift、exec、jms、spooling directory、netcat、sequence generator、syslog、http、legacy
-（2）Channel组件对采集到的数据进行缓存，可以存放在Memory或File中。
-（3）Sink组件是用于把数据发送到目的地的组件，目的地包括Hdfs、Logger、avro、thrift、ipc、file、Hbase、solr、自定义。
-2、我公司采用的Source类型为：
-（1）监控后台日志：exec
-（2）监控后台产生日志的端口：netcat
-Exec  spooldir
-8.3 Flume的Channel Selectors
+```
 
-8.4 Flume参数调优
-1. Source
-    增加Source个数（使用Tair Dir Source时可增加FileGroups个数）可以增大Source的读取数据的能力。例如：当某一个目录产生的文件过多时需要将这个文件目录拆分成多个文件目录，同时配置好多个Source 以保证Source有足够的能力获取到新产生的数据。
-    batchSize参数决定Source一次批量运输到Channel的event条数，适当调大这个参数可以提高Source搬运Event到Channel时的性能。
-2. Channel 
-    type 选择memory时Channel的性能最好，但是如果Flume进程意外挂掉可能会丢失数据。type选择file时Channel的容错性更好，但是性能上会比memory channel差。
-    使用file Channel时dataDirs配置多个不同盘下的目录可以提高性能。
-    Capacity 参数决定Channel可容纳最大的event条数。transactionCapacity 参数决定每次Source往channel里面写的最大event条数和每次Sink从channel里面读的最大event条数。transactionCapacity需要大于Source和Sink的batchSize参数。
-3. Sink 
-    增加Sink的个数可以增加Sink消费event的能力。Sink也不是越多越好够用就行，过多的Sink会占用系统资源，造成系统资源不必要的浪费。
-    batchSize参数决定Sink一次批量从Channel读取的event条数，适当调大这个参数可以提高Sink从Channel搬出event的性能。
-    8.5 Flume的事务机制
-    Flume的事务机制（类似数据库的事务机制）：Flume使用两个独立的事务分别负责从Soucrce到Channel，以及从Channel到Sink的事件传递。比如spooling directory source 为文件的每一行创建一个事件，一旦事务中所有的事件全部传递到Channel且提交成功，那么Soucrce就将该文件标记为完成。同理，事务以类似的方式处理从Channel到Sink的传递过程，如果因为某种原因使得事件无法记录，那么事务将会回滚。且所有的事件都会保持到Channel中，等待重新传递。
-    8.6 Flume采集数据会丢失吗?
-    不会，Channel存储可以存储在File中，数据传输自身有事务。
+```
+2. 使用第三方框架Ganglia实时监控Flume
+	Source组件是专门用来收集数据的，可以处理各种类型、各种格式的日志数据，包括avro、thrift、exec、jms、spooling directory、netcat、sequence generator、syslog、http、legacy
+	Channel组件对采集到的数据进行缓存，可以存放在Memory或File中。
+	Sink组件是用于把数据发送到目的地的组件，目的地包括Hdfs、Logger、avro、thrift、ipc、file、Hbase、solr、自定义。
 
+	监控后台日志：exec
+	监控后台产生日志的端口：netcat
+	Exec  spooldir
+```
 
+```
+3. Flume的Channel Selectors
+	Replicating(默认) 和Multiplexing ：replicating是将所有数据全部发给所有的channel， Multiplexing可以选择发往哪个channel
+```
+
+```
+4.Flume参数调优
+	Source
+   增加Source个数（使用Tair Dir Source时可增加FileGroups个数）可以增大Source的读取数据的能力。例如：当某一个目录产生的文件过多时需要将这个文件目录拆分成多个文件目录，同时配置好多个Source 以保证Source有足够的能力获取到新产生的数据。
+   batchSize参数决定Source一次批量运输到Channel的event条数，适当调大这个参数可以提高Source搬运Event到Channel时的性能。
+	2. Channel 
+   type 选择memory时Channel的性能最好，但是如果Flume进程意外挂掉可能会丢失数据。type选择file时Channel的容错性更好，但是性能上会比memory channel差。
+   使用file Channel时dataDirs配置多个不同盘下的目录可以提高性能。
+   Capacity 参数决定Channel可容纳最大的event条数。transactionCapacity 参数决定每次Source往channel里面写的最大event条数和每次Sink从channel里面读的最大event条数。transactionCapacity需要大于Source和Sink的batchSize参数。
+	3. Sink 
+   增加Sink的个数可以增加Sink消费event的能力。Sink也不是越多越好够用就行，过多的Sink会占用系统资源，造成系统资源不必要的浪费。
+   batchSize参数决定Sink一次批量从Channel读取的event条数，适当调大这个参数可以提高Sink从Channel搬出event的性能。
+```
+
+```
+5.Flume的事务机制
+   Flume的事务机制（类似数据库的事务机制）：Flume使用两个独立的事务分别负责从Soucrce到Channel，以及从Channel到Sink的事件传递。比如spooling directory source 为文件的每一行创建一个事件，一旦事务中所有的事件全部传递到Channel且提交成功，那么Soucrce就将该文件标记为完成。同理，事务以类似的方式处理从Channel到Sink的传递过程，如果因为某种原因使得事件无法记录，那么事务将会回滚。且所有的事件都会保持到Channel中，等待重新传递。
+```
+
+```
+6.Flume采集数据会丢失吗?
+   不会，Channel存储可以存储在File中，数据传输自身有事务。
+```
 
 
 
@@ -1409,8 +1622,6 @@ netstat   -nultp | grep 端口号
 
 
 # Kafka
-
-
 
 
 

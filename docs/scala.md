@@ -1415,17 +1415,18 @@ case Bundle(_, _, art @ Book(_, _), rest) => (art, rest)
 
 
 
-
-
 ### 函数式编程高级
 
-##### 类型推断:主要起到简写的作用
+##### 类型推断:
 
-当类型可以被推断时，可以省略类型
+作用:  主要起到简写的作用
 
-当传入的函数，只有单个参数时，可以省去括号
-
-如果变量只在=>右边只出现一次，可以用_代替
+> 当类型可以被推断时，可以省略类型
+>
+> 当传入的函数，只有单个参数时，可以省去括号
+>
+> 如果变量只在=>右边只出现一次，可以用_代替
+>
 
 
 
@@ -1549,9 +1550,32 @@ object CurliTest {
 编程范式： 命令式编程， 函数式编程， 逻辑式编程
 ```
 
+###### 递归反转字符串
 
+```
+  def reverse(str: String): String = {
+   if(str.length==1) str else reverse(str.tail)+str.head
+  }
 
+  //反转字符串--递归方式
+  def recursive3(): Unit ={
+    var str = "abcdef"
+    println(reverse(str))
+  }
+```
 
+###### n阶乘
+
+```
+ def factorial(num: Int): Int = {
+    if (num==0) 1 else  num * factorial(num-1)
+  }
+
+  //递归求阶乘
+  def recursive4(): Unit ={
+    println(factorial(10))
+  }
+```
 
 
 
