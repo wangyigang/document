@@ -1625,7 +1625,7 @@ netstat   -nultp | grep 端口号
 
 
 
-## kafka架构
+### kafka架构
 
 ![1551824579376](assets/1551824579376.png)
 
@@ -1648,7 +1648,7 @@ netstat   -nultp | grep 端口号
 
 ```
 分区的原因：
-1.分布式存储
+1. 分布式存储
 2. 提高消费者能力
 3. 负载均衡
 ```
@@ -1715,14 +1715,562 @@ bin/kafka-topics.sh --zookeeper hadoop102:2181 --delete --topic first
 1.#普通消费方式--默认消费latest.当前时间最新的
 bin/kafka-console-consumer.sh --zookeeper hadoop102:2181 --topic sec
 2.#--from-beginning,从头开始消费
-bin/kafka-console-consumer.sh --zookeeperadoop102:2181 --topic sec --from-beginning
+bin/kafka-console-consumer.sh --zookeeper hadoop102:2181 --topic sec --from-beginning
 3. bootstrap-server方式，0.9版本之后存放本地，以主题方式保存
 bin/kafka-console-consumer.sh --bootstrap-server hadoop102:9092 --topic sec
 ```
 
 
 
-## Kafka工作流程分析
+### Kafka工作流程分析
+
+##### 数据生产
+
+###### 写入方式
+
+```
+producer采用推push模式 将数据发布到broker， 数据被追加append到分区(partition)中
+顺序写磁盘(效率比随机写内存高)
+```
+
+###### 分区
+
+```
+每个分区都是一个消息队列，每个消息队列都有自己的offset
+
+分区原则：
+	指定列partition,则直接使用
+	未指定partition但指定key ,通过key值hash出一个partition
+	partition和key都未指定,使用轮询方式选出partition
+```
+
+###### 副本
+
+```
+同一个partition分区有多个副本replication， 多个副本之间区分leader和follwer， leader和producder和consumer进行交互，其他follower从leader中复制数据，做备份
+```
+
+###### 写入流程
+
+![1552177988538](assets/1552177988538.png)
+
+> producer先从broker-list节点中找到该partition的leader
+>
+> producer将消息发送给leader
+>
+> leader接收到消息后，将消息写入本地log, 
+>
+> follower从leader 中拉取pull 消息, follwer写入到本地log后向leader发送ack
+>
+> leader接收到所有replication的ack后，向producer发送ACK
+
+> ACK机制
+> 0 ： producer不等待broker的ack
+>
+> 1: producer等待broker的ack, leader写入到 本地log后返回ACK
+>
+> all (-1) : 等待leader和follwer全部落盘成功后返回ACK， 数据一般不会丢失，但性能有降低
+
+
+
+##### 数据保存
+
+###### 存储方式
+
+```
+一个topic分成多个partition，每个partition物理上对应一个文件夹(文件夹中保存log和index文件)
+```
+
+###### 存储策略
+
+```
+1）基于时间：log.retention.hours=168   //7天
+2）基于大小：log.retention.bytes=1073741824
+```
+
+###### zookeeper存储结构
+
+![1552179991309](assets/1552179991309.png)
+
+##### 数据消费
+
+###### 高级API
+
+> 优点：简单，不用自行管理offset,不需要管理分区，副本等情况
+>
+> 缺点： 不能自行控制offset
+
+###### 低级API
+
+> 优点： 可以自己控制offset,可以从任何地方读取
+>
+> 缺点： 较为负载，需要自行控制offset
+
+###### 消费者组
+
+```
+同一个消费者组中的消费者不能消费同一个分区数据(partition)
+
+使多个消费者在同一个消费者组中
+修改配置文件consumer.properties: vim consumer.properties
+将group.id配置为同一个消费者组： group.id=test, 然后进行分发，这样就保证在同一个消费者组中
+启动生产者: bin/kafka-console-producer.sh --broker-list hadoop102:9092 --topic first
+启动多个消费者，启动时使用配置文件，使在同一个消费者组中：bin/kafka-console-consumer.sh --zookeeper hadoop102:2181 --topic first --consumer.config config/consumer.properties
+
+//现象：同一时刻只有一个消费者能接收到消息
+```
+
+### kafka API
+
+##### 环境准备
+
+启动zk和kafka集群，在kafka集群中打开一个消费者
+
+```
+bin/kafka-console-consumer.sh --zookeeper hadoop102:2181 --topic first
+```
+
+导入pom依赖
+
+```
+<dependencies>
+    <!-- https://mvnrepository.com/artifact/org.apache.kafka/kafka-clients -->
+    <dependency>
+        <groupId>org.apache.kafka</groupId>
+        <artifactId>kafka-clients</artifactId>
+        <version>0.11.0.0</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.kafka/kafka -->
+    <dependency>
+        <groupId>org.apache.kafka</groupId>
+        <artifactId>kafka_2.12</artifactId>
+        <version>0.11.0.0</version>
+    </dependency>
+</dependencies>
+```
+
+##### 生产者
+
+###### 高级API
+
+```
+
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+
+import java.util.Properties;
+
+/*
+    高级API
+    Producerconfig---生产者API的对应属性，里面有所有属性
+ */
+public class KafkaAPITest {
+    public static void main(String[] args) {
+        Properties props = new Properties();
+        //设置kafka集群的地址
+        props.put("bootstrap.servers", "hadoop102:9092,hadoop103:9092,hadoop105:9092");
+        //kafka应答机制，等待leader和follwer都同步完成后，相应应答
+        props.put("acks", "all");
+        //重试次数
+        props.put("retries", 0);
+        //批处理大小--基于数据大小的批处理
+        props.put("batch.size", 16384);
+        //延迟--基于时间的批处理，超过这个时间也会进行发送数据
+        props.put("linger.ms", 1);
+        //buffer大小缓冲区内存大小
+        props.put("buffer.memory", 33554432);
+        //序列化
+        props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        //反序列化
+        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        //
+        Producer<String, String> producer = new KafkaProducer<>(props);
+        //第一种方式：只指定value--轮训方式
+//        for (int i = 0; i < 10; i++)
+//            producer.send(new ProducerRecord<>("mytopic",Integer.toString(i)));
+
+        //第二种方式：指定key和value--按照key
+//        for (int i = 0; i < 10; i++)
+//            producer.send(new ProducerRecord<>("mytopic",i+"",Integer.toString(i)));
+
+        //第三种方式，指定partition 和key和value--按照指定分区进行消费
+        for (int i = 0; i < 10; i++)
+            producer.send(new ProducerRecord<>("mytopic", 0, i + "", Integer.toString(i)));
+
+        producer.close();
+
+    }
+}
+```
+
+###### 带有回调函数
+
+```
+
+/*
+    注意点： producer记得进行关闭
+ */
+public class KafkaProducerWithCallbackTest {
+    public static void main(String[] args) {
+        //设置properties,设置的属性配置
+        Properties prop = new Properties();
+        prop.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "hadoop102:9092,hadoop013:9092,hadoop105:9092");
+        //ack
+        prop.put(ProducerConfig.ACKS_CONFIG, "all");
+        //重试次数
+        prop.put(ProducerConfig.RETRIES_CONFIG, 2);
+        //批处理大小
+        prop.put(ProducerConfig.BATCH_SIZE_CONFIG, "16384");//16K
+        //延迟时间
+        prop.put(ProducerConfig.LINGER_MS_CONFIG, 1);
+        //buffer缓存大小
+        prop.put(ProducerConfig.BUFFER_MEMORY_CONFIG, "33554432");
+        //序列化
+        prop.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+        prop.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+
+        Producer<String, String> producer = new KafkaProducer<String, String>(prop);
+        for(int i=0; i<5; i++){
+            producer.send(new ProducerRecord<>("mytopic", i + ""), new Callback() {
+                //回调函数
+                @Override
+                public void onCompletion(RecordMetadata metadata, Exception exception) {
+                    if(metadata!= null) {
+                        long offset = metadata.offset();
+                        System.out.println(offset);
+                        System.out.println("i 输出完成");
+                    }else if(exception != null){
+                        System.out.println(exception.getMessage());
+                    }
+                }
+            });
+        }
+
+        //不进行关闭，就不会输出结果
+        producer.close();
+
+    }
+}
+```
+
+###### 自定义分区
+
+```
+自定义分区的分区指定算法会取代key的优先级,
+优先级: 手动指定分区> key的hashcode > 轮询方式
+自定义分区中指定的分区只能达到影响第二个优先级,key的hashcode方式
+```
+
+```
+//在kafkaApi中指定分区类配置
+//设置自定义分区
+prop.put(ProducerConfig.PARTITIONER_CLASS_CONFIG, CustomerPartition.class);
+
+
+import org.apache.kafka.clients.producer.Partitioner;
+import org.apache.kafka.common.Cluster;
+import java.util.Map;
+public class CustomerPartition implements Partitioner {
+
+    /**
+     * 自定义分区的逻辑
+     * @param topic
+     * @param key
+     * @param keyBytes
+     * @param value
+     * @param valueBytes
+     * @param cluster
+     * @return 返回值是分区号
+     */
+    @Override
+    public int partition(String topic, Object key, byte[] keyBytes, Object value, byte[] valueBytes, Cluster cluster) {
+        return 1;
+    }
+
+    /**
+     * 关闭资源
+     */
+    @Override
+    public void close() {
+
+    }
+
+    /**
+     * 获取并添加相关属性
+     * @param configs
+     */
+    @Override
+    public void configure(Map<String, ?> configs) {
+
+    }
+}
+```
+
+
+
+##### 消费者
+
+```java
+
+/*
+    注意： 反序列化string ： org.apache.kafka.common.serialization.StringDeserializer
+    注意看报出的错误： caused by...
+ */
+
+public class KafkaConsumerTest {
+    public static void main(String[] args) {
+        Properties props= new Properties();
+        //bootstrapserver
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "hadoop102:9092,hadoop103:9092,hadoop105:9092");
+        //消费者组id
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "test");
+        //是否自动提交offset
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
+        //提交offset的延时
+        props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 1000);
+        //key反序列化
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
+        //value反序列化
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
+        //创建kafkaconsumer
+        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
+        //设定主题
+        consumer.subscribe(Arrays.asList("mytopic"));
+        //消费消息
+        while (true){
+            //拉取时间
+            ConsumerRecords<String, String> records = consumer.poll(1000);
+            for (ConsumerRecord<String, String> record : records) {
+                System.out.println("record="+record.value());
+                System.out.println("partition="+record.partition());
+                System.out.println("offset="+record.offset());
+            }
+        }
+    }
+}
+```
+
+
+
+###### 低级API
+
+需求：实现使用低级API读取指定topic，指定partition,指定offset的数据。
+
+```
+TODO
+```
+
+
+
+
+
+### Kafka拦截器
+
+##### 拦截器原理：
+
+```
+拦截器自作用时刻：
+1. 发送数据到broker之前调用拦截器
+2. 响应回调函数之前调用 onAcknowledgement
+
+Interceptor需要实现org.apache.kafka.clients.producer.ProducerInterceptor
+```
+
+
+
+##### demo
+
+需求：实现一个简单的双interceptor组成的拦截链。第一个interceptor会在消息发送前将时间戳信息加到消息value的最前部；第二个interceptor会在消息发送后更新成功发送消息数或失败发送消息数。
+
+> 1. 实现ProducerInterceptor接口
+>
+> 2. 在生产者properties中进行设置属性,
+>
+>    ```
+>    List<String> list = Arrays.asList("kafkatest.KafkaInterceptor", "kafkatest.CountInterceptor");//具有先后顺序
+>    prop.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, list);
+>    ```
+
+- 拦截器一：对数据进行处理
+
+```
+
+/**
+ *  kafka拦截器
+ */
+public class KafkaInterceptor implements ProducerInterceptor<String, String> {
+    /**
+     * 发送数据前
+     * @param record
+     * @return
+     */
+    @Override
+    public ProducerRecord<String, String> onSend(ProducerRecord<String, String> record) {
+        String value = record.value();
+        String newValue = System.currentTimeMillis() + ":" + value;
+        ProducerRecord<String, String> producerRecord = new ProducerRecord<>(record.topic(), newValue);
+        return producerRecord;
+    }
+
+    @Override
+    public void onAcknowledgement(RecordMetadata metadata, Exception exception) {
+
+    }
+
+    @Override
+    public void close() {
+
+    }
+
+    @Override
+    public void configure(Map<String, ?> configs) {
+
+    }
+}
+```
+
+- 拦截器二： 对返回结果进行统计处理
+
+```
+/**
+ *  onSend方法不能反悔Null, 否则会报空指针异常
+ */
+public class CountInterceptor implements ProducerInterceptor<String, String> {
+    private int success=0;
+    private int error=0;
+
+    @Override
+    public ProducerRecord<String, String> onSend(ProducerRecord<String, String> record) {
+        return record;
+    }
+
+    @Override
+    public void onAcknowledgement(RecordMetadata metadata, Exception exception) {
+        if(metadata!= null){
+            success++;
+        }else if(exception != null){
+            error++;
+        }
+
+    }
+
+    /**
+     *  关闭的时候进行调用查看 成功多少次， 失败多少次
+     */
+    @Override
+    public void close() {
+        System.out.println("success="+success);
+        System.out.println("error="+error);
+
+    }
+
+    @Override
+    public void configure(Map<String, ?> configs) {
+
+    }
+}
+```
+
+
+
+#### kafka和flume比较
+
+> flume: cloudera研发
+>
+> 适合多个生产者,
+>
+> 适合下游数据消费者不多的情况
+>
+> 适合数据安全性要求不高的场景
+>
+> Kafka：linkedin研发
+>
+> 适合数据下游消费者多的场景
+>
+> 适合数据安全性较高的操作
+
+
+
+##### Flume与Kafka集成
+
+```
+# define
+a1.sources = r1
+a1.sinks = k1
+a1.channels = c1
+
+# source
+a1.sources.r1.type = exec
+a1.sources.r1.command = tail -F -c +0 /opt/module/datas/flume.log
+a1.sources.r1.shell = /bin/bash -c
+
+# sink
+a1.sinks.k1.type = org.apache.flume.sink.kafka.KafkaSink
+a1.sinks.k1.kafka.bootstrap.servers = hadoop102:9092,hadoop103:9092,hadoop104:9092
+a1.sinks.k1.kafka.topic = first
+a1.sinks.k1.kafka.flumeBatchSize = 20
+a1.sinks.k1.kafka.producer.acks = 1
+a1.sinks.k1.kafka.producer.linger.ms = 1
+
+# channel
+a1.channels.c1.type = memory
+a1.channels.c1.capacity = 1000
+a1.channels.c1.transactionCapacity = 100
+
+# bind
+a1.sources.r1.channels = c1
+a1.sinks.k1.channel = c1
+```
+
+
+
+##### 常见问题
+
+###### kafka偏移量Offset存放在哪，为什么？
+
+```
+0.9版本之前存放在zookeeper中
+o.9版本以后存放在本地，zookeeper不适合频繁的写操作
+```
+
+###### kafka为什么可以实现高吞吐？单节点kafka的高吞吐比其他消息队列大?
+
+```
+分区性质
+顺序读取, 零拷贝优化，减少与内核层交互
+分段日志log
+```
+
+###### kafka消费者的数据如何再消费
+
+```
+低级API：
+	低级API
+高级API:
+	atuo_offset_reset:earliest / latest
+	将消费者组更换
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
