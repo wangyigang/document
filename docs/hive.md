@@ -817,7 +817,7 @@ hive (default)> select * from dept_partition2 where month='201709' and day='10';
 
 
 
-## **修改表**
+## 修改表
 
 ##### 重命名表
 
@@ -1559,9 +1559,9 @@ group by
 
 CONCAT (string a, string b...): 返回字符串拼接
 
-CONCAT_WS(separator, str1, str2,...)： 分隔符和剩余字符进行拼接
+COLLECT_WS(separator, str1, str2,...):第一个参数为分隔符，剩下为字符串进行拼接，字符串之间用分隔符拼接
 
-COLLECT_SET(col)：只接受基本数据类型，进行去重汇总，产生array类型字段
+COLLECT_SET(col) : 只接受基本数据类型，进行去重汇总，商城array类型字段
 
 ```
 select
@@ -2397,8 +2397,6 @@ over()开窗函数和聚合函数的不同之处是对于每个组返回多行�
 ## Kylin
 
 查询性能亚秒级
-
-
 
 
 

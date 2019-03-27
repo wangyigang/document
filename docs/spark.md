@@ -18,8 +18,21 @@ spark内置模块 = spark core+spark SQL+spark Streaming+spark Mlib+spark GraghX
    2. Worker：掌握每个节点的资源，类似于Yarn的nodemanager
 
 2. Driver和Executor
-   1.  Driver: 驱动器, 创建SparkContext，把用户程序转为任务，跟踪Executor的运行状态，为执行器节点调度任务
+   1. Driver: 驱动器, 执行开发main方法的进程，创建SparkContext，把用户程序转为任务，跟踪Executor的运行状态，为执行器节点调度任务
+
+      ```
+      把用户程序转为job
+      跟踪Executor的运行状况
+      为执行器节点调度任务
+      UI展示应用应用程序状态
+      ```
+
    2. Executor：执行器, 运行spark应用任务，并将状态信息返回给Driver驱动器
+
+      ```
+      负责运行spark任务，并将结果返回给driver
+      通过块管理器(BlockManager)为用户程序缓存的RDD提供内存存储，进行缓存
+      ```
 
 总结：==Master和Worker是Spark的守护进程，即Spark在特定模式下正常运行所必须的进程。Driver和Executor是临时进程，当有具体任务提交到Spark集群才会开启的进程。==
 
@@ -28,6 +41,10 @@ spark内置模块 = spark core+spark SQL+spark Streaming+spark Mlib+spark GraghX
 ```
 cat /proc/cpuinfo | grep 'procesoor'  | wc -l
 ```
+
+###### 并发与并行
+
+![1552227308113](assets/1552227308113.png)
 
 ###### local本地模式
 
@@ -42,7 +59,7 @@ bin/spark-submit --class <main-class> --master <master-url> --deploy-mode <deplo
 参数说明：
 
 ```
--- master: 指定master地址
+-- master: 指定master地址， 默认local[*]/yarn/spark://host:port /mesos
 --class:指定应用的启动类
 --deploy-mode: client/cluster方式运行程序
 --conf : 任意的spark配置属性
@@ -69,7 +86,7 @@ sc.textFile("input").flatMap(_.split(" ")).map((_,1)).reduceByKey(_+_).collect
 
 - collect延时计算方式
 
-##### Standalone模式：(完全分布式模式)
+###### Standalone模式：(完全分布式模式)
 
 > 主从架构
 
@@ -161,7 +178,7 @@ spark HA集群访问
 
 ##### Yarn模式
 
-> yarn模式细分为 yarn-client模式和 yarn-cluster模式，两种模式的区别是Dirver程序的运行节点不同, yarn-client的Driver运行在客户端，yarn-cluster程序运行在RM启动的appmaster中
+> yarn模式细分为 yarn-client模式和 yarn-cluster模式，两种模式的区别是Dirver程序的运行节点不同, yarn-client的Driver运行在客户端，**yarn-cluster程序运行在RM启动的appmaster中**
 
 ![1550236179437](assets/1550236179437.png)
 
@@ -239,8 +256,6 @@ Cluster模式：
 3. 提交任务执行
 4. web网页查看hadoop103:8088，继续点击单条日志会跳转到spark日志中
 ```
-
-
 
 
 

@@ -941,50 +941,40 @@ Array.ofDim[Double](3,4)
 >
 > 输入和输出要遵循陷入先出的原则，即：先存入队列的数组，要先取出
 
-1. 队列Queue的创建
+```
+创建队列： new mutable.Queue[Int]
 
-   new mutable.Queue[Int]
+入队列：enqueue
+出队列：dequeue
 
-2. 出队
+返回队列中的第一个元素: q.head
+返回队列最后一个元素： a1.last
+返回队列的尾部： q1.tail  --尾部：除了第一个元素之外的其他元素，都是尾部元素
 
-   - dequeue()
-3. 入队
+```
 
-   - enqueue
-4. head
 
-   - head --返回队列首元素
-5. tail
 
-   - tail -- 返回队列除了head头元素之外组成的队列
+```
+ def test2(): Unit ={
+    val q1= new mutable.Queue[Int]()
+//    println(q1)  //空的队列
+    //给队列增加元素
+    q1+=9
+//    println("q1="+q1)
+    q1++= List(4,5,7)
+//    println("q1="+q1)
 
-​    def main(args: Array[String]): Unit = {
-​       //创建队列
-​       val q1 = new mutable.Queue[Int]
-​       println(q1)
-​       //追加元素
-​       q1+=1
-​       q1+=2
-​       //将List中的元素添加到队列中
-​       q1 ++= List(1,2,3)
-​       println(q1)
-
-​       //添加数组中的元素
-​       q1++= Array(5,6,7)
-​       println(q1)
-​       //使用方法进行添加元素
-​       q1.enqueue(100,200)// 参数时* ，可以添加无限个
-​       println("======= head ======")
-​       //返回队列头部元素
-​       println(q1.head) //返回头结点信息
-​       //删除队列头节点信息
-​       val head  = q1.dequeue()
-​       println(q1)
-
-​       println("======  tail =====")
-​       //返回队尾元素--除了队列头结点的所有元素组成的队列
-​       println("queue.tail = "+ q1.tail)
-​     }
+    //从队列中取出一个元素
+    val queueElement: Int = q1.dequeue()
+//    println(queueElement)
+//    println(q1)
+    //入队列
+    q1.enqueue(100,10,100)  //enqueue --入队列
+    //输出打印
+    println(q1)
+  }
+```
 
    
 
@@ -994,90 +984,86 @@ Array.ofDim[Double](3,4)
 
 
 
-###### 	构建不可变Map
+###### 	构建Map的四种方式
 
 ```
+1. 创建不可变map
 val map = Map("Alice" -> 10, "Bob" -> 20, "Kotlin" -> "北京")
+- 输出顺序和声明顺序一致
+- 构建Map集合中，集合中的元素其实是Tuple2类型
+- 默认情况下，Map是不可变map
+2.创建可变的map 
+ var map2 = mutable.Map("Alice"->10, "Bob"->20, "Tom"->30)
+3. 利用new 方式创建空map
+var map3=new scala.collection.mutable.HashMap[String, Int]
+4. 使用tuple进行创建
+val map4 = mutable.Map( ("A", 1), ("B", 2), ("C", 3),("D", 30) );
 ```
 
-- 输出顺序和声明顺序一致
 
-- 构建Map集合中，集合中的元素其实是Tuple2类型
 
-- 默认情况下，Map是不可变map
+##### 映射map--取值
 
-  ###### 构建可变map
+###### 	四种方式
 
-  ```
-    val map = scala.collection.mutable.Map("Alice" -> 10, "Bob" -> 20, "Kotlin" -> 30)
-  ```
-
-  ###### 创建空的映射Map
-
-  ```
-      val map2 = new mutable.HashMap[String, Int]()
-      println(map2)
-  ```
-
-  ###### 利用对欧元组创建
-
-  ```
-   val map4 = mutable.Map( ("A", 1), ("B", 2), ("C", 3),("D", 30) )
-  ```
-
-  ##### 映射map--取值
-
-  ###### 	方式一：
-
-  ```
-  map(key)
-  ```
-
-  ###### 	方式二：contains--检查是否存在key
-
-  ```
-  map.contains("A")
-  ```
-
-  ###### 	方式三：
-
-  ```
-  map.get(key).get // 通过映射.get(key) 调用返回的一个Option对象，要么是some,要么是None
-  ```
-
-  ###### 	方式四：
-
-  ```
-  getOrElse //如果存在，返回key对应的值，如果不存在，返回默认值
-  ```
+```
+1.方式一：
+map(key)
+2.方式二：
+map.contains("A")
+3.方式三：
+map.get(key).get // 通过映射.get(key) 调用返回的一个Option对象，要么是some,要么是None
+4.方式四：
+getOrElse //如果存在，返回key对应的值，如果不存在，返回默认值
+```
 
 ##### 映射Map--增删改查
 
-###### 		
-
 ```
-   val map4 = mutable.Map( ("A", 1), ("B", 2), ("C", 3),("D", 30) )
-    println("map4=" + map4)
-    println(map4("A"))
+val map4 = mutable.Map( ("A", 1), ("B", 2), ("C", 3),("D", 30) )
+println("map4=" + map4)
+println(map4("A"))
 
-    //map更新
-    map4("A")=20 //map 必须是可修改的，否则会报错
-    println(map4)//如果key不存在，会进行添加
+//map更新
+map4("A")=20 //map 必须是可修改的，否则会报错
+println(map4)//如果key不存在，会进行添加
 
-    //添加
-    map4+=("D"->40)
-    println(map4) //如果已经存在，会进行修改
-    //删除map元素
-    map4-= ("B","A") //通过可以进行删除i
-    println(map4)
+//添加
+map4+=("D"->40)
+println(map4) //如果已经存在，会进行修改
+//删除map元素
+map4-= ("B","A") //通过可以进行删除i --直接使用-=即可
+println(map4)
 
-    //遍历
-    for ((k,v)<- map4){
-      println(k+" "+v)
-    }
+//map遍历的四种方式
+def test8(): Unit ={
+val map4 = mutable.Map(("A", 1), ("B", 2), ("C", 3), ("D", 30));
+println("------第一种方式----")
+for ((k,v)<- map4) {
+println(k+ " is mapped to "+v)
+}
+//第二种方式
+println("----第二种方式----")
+for(v<- map4.keys){
+println(v)
+}
+println("----第三种方式----")
+for (v<- map4.values) println(v)
+println("-----第四种方式---")
+for (v<- map4){
+println(v) //打印生成的是tuple
+}
+
+}
 ```
 
-TODO--Set
+##### Set
+
+> 集合： 不可重复元素的集合，不保留顺序,不重复,默认底层是hash实现
+
+
+
+
 
 
 
@@ -1121,7 +1107,7 @@ object MapTest01 {
 
 ```
 
-##### flatmap映射：flat即压扁，亚平，扁平化映射
+##### flatmap映射：flat即压扁，压平，扁平化映射
 
 ###### 基本介绍
 
@@ -1416,6 +1402,55 @@ case Bundle(_, _, art @ Book(_, _), rest) => (art, rest)
 
 
 ### 函数式编程高级
+
+##### 匿名函数
+
+基本介绍：没有名字的函数就是匿名函数，可以通过函数表达式（x:Double ）=>3*x，来设置匿名函数
+
+```
+//编写一个匿名函数，可以返回2个整数的和，并输出该匿名函数类型
+object AnonymousFunTest {
+  def main(args: Array[String]): Unit = {
+    val f1= (n1:Int, n2:Int )=>{
+      println("匿名函数被调用...")
+      n1+n2
+    }
+    println("f1 类型="+f1)
+    println(f1(10,30))
+  }
+}
+//匿名函数的返回值类型是自动类型推倒出来的
+```
+
+
+
+
+
+##### 高阶函数
+
+基本介绍： 能够接受函数作为参数的函数，叫做高阶函数，高阶函数可以返回一个匿名函数
+
+```
+def test2(): Unit ={
+    def test(f:Double=> Double, f2:Double =>Int, n1:Double)={
+      f(f2(n1))
+    }
+    def sum(d:Double) :Double={
+      d+d
+    }
+    def mod(d:Double):Int={
+      d.toInt%2
+    }
+    //调用过程: 将三个参数传递给test, 第一个和第二个为函数， 传递完成后
+    // f(f2(n1)) 先执行里面的f2(n1) 结果再传递个f() 继续执行,最后结果为0
+    var res = test(sum, mod, 6.0)
+    println("res="+res)
+  }
+```
+
+###### 高阶函数还可以返回函数类型
+
+
 
 ##### 类型推断:
 

@@ -1617,7 +1617,56 @@ netstat  -anp  |grep   端口号
 netstat   -nultp | grep 端口号 
 ```
 
+##### Tail Dir source
 
+> Tail Dir 结合了exec 和spoling dir 优点，可实时监控一批文件，并记录每个文件最新消费位置，agent进程重启后不会有重复消费的问题,建议使用1.8版本以上
+
+```
+# source的名字
+agent.sources = s1
+# channels的名字
+agent.channels = c1
+# sink的名字
+agent.sinks = r1
+
+# 指定source使用的channel
+agent.sources.s1.channels = c1
+# 指定sink使用的channel
+agent.sinks.r1.channel = c1
+
+######## source相关配置 ########
+# source类型
+agent.sources.s1.type = TAILDIR
+# 元数据位置
+agent.sources.s1.positionFile = /Users/wangpei/tempData/flume/taildir_position.json
+# 监控的目录
+agent.sources.s1.filegroups = f1
+agent.sources.s1.filegroups.f1=/Users/wangpei/tempData/flume/data/.*log
+agent.sources.s1.fileHeader = true
+
+######## channel相关配置 ########
+# channel类型
+agent.channels.c1.type = file
+# 数据存放路径
+agent.channels.c1.dataDirs = /Users/wangpei/tempData/flume/filechannle/dataDirs
+# 检查点路径
+agent.channels.c1.checkpointDir = /Users/wangpei/tempData/flume/filechannle/checkpointDir
+# channel中最多缓存多少
+agent.channels.c1.capacity = 1000
+# channel一次最多吐给sink多少
+agent.channels.c1.transactionCapacity = 100
+
+######## sink相关配置 ########
+# sink类型
+agent.sinks.r1.type = org.apache.flume.sink.kafka.KafkaSink
+# brokers地址
+agent.sinks.r1.kafka.bootstrap.servers = localhost:9092
+# topic
+agent.sinks.r1.kafka.topic = testTopic3
+# 压缩
+agent.sinks.r1.kafka.producer.compression.type = snappy
+
+```
 
 
 
@@ -2254,40 +2303,6 @@ o.9版本以后存放在本地，zookeeper不适合频繁的写操作
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## 其他
 
 ##### 显示全类名
@@ -2297,3 +2312,23 @@ o.9版本以后存放在本地，zookeeper不适合频繁的写操作
 jps -l
 ```
 
+
+
+##### 分区分配策略
+
+> kafka分区分配策略， 分为三种RoundRobin, Range , Sticky 策略
+>
+
+> Range 分配策略:
+> 按照消费者总数和分区总数整除获取一个数值，将分区按照数值进行平均分配的策略，
+> 如果存在没有整除的情况，字典顺序靠前的消费者会被多分配一个分区
+
+> RoundRobin:
+> 原理是将消费者组内所有消费者以及所有的topic按照字典顺序进行排序，然后通过轮询方式逐个将分区分配各每个消费者
+> 对应的参数策略：RoundRobinAssignor策略对应的partition.assignment.strategy参数值为：org.apache.kafka.clients.consumer.RoundRobinAssignor
+
+> Sticky
+> 目的：分区的分配要尽可能的均匀
+> 	   分区的分配尽可能的与上次分配的保持相同
+>
+> 当两者发生冲突时，第一个目标优先于第二个目标
