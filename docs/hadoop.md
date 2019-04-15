@@ -36,6 +36,57 @@ Hadoop2.x组成=MapReduce(计算),Yarn(资源调度)，HDFS(数据存储),Common
 
 5. 配置用户具有root权限
 
+   ```
+   1.关闭防火墙：
+   	查看防火墙状态：service iptalbes status
+   	关闭防火墙： sudo service iptables stop //停止防火墙
+   	关闭防火墙自启： sudo chkconfig iptables off //设置防火墙自启关闭
+   2.修改静态IP:
+   	vim /etc/udev/rules.d/70-persistent-net.rules 
+   	删除第一个eth0，修改第二个eth1为eth0，复制address(硬件物理地址)
+   	00:0c:29:2e:80:2a
+   	vim /etc/sysconfig/network-scripts/ifcfg-eth0
+   	修改物理地址 HWADDR=XXX
+   	修改ip地址：IPADDR=xxx
+   	ONBOOT=yes
+   	BOOTPROTO=static
+   	IPADDR=192.168.1.109
+   	GATEWAY=192.168.1.2
+   	DNS1=114.114.114.114
+   	DNS2=8.8.8.8
+   3.修改hostname:
+   	vim /etc/sysconfig/network 
+   	修改hostname那一行
+   4.配置hosts
+   	vim /etc/hosts
+       192.168.1.100 hadoop100
+       192.168.1.101 hadoop101
+       192.168.1.102 hadoop102
+       192.168.1.103 hadoop103
+       192.168.1.104 hadoop104
+       192.168.1.105 hadoop105
+       192.168.1.106 hadoop106
+       192.168.1.107 hadoop107
+       192.168.1.108 hadoop108
+       192.168.1.109 hadoop109
+       192.168.1.201 hadoop201
+       192.168.1.202 hadoop202
+       192.168.1.203 hadoop203
+       192.168.1.204 hadoop204
+       192.168.1.205 hadoop205
+       192.168.1.206 hadoop206
+       192.168.1.207 hadoop207
+       192.168.1.208 hadoop208
+   5.创建用户:
+   	useradd wangyg //添加用户
+   	passwd wangyg //设置wangyg的密码
+   	可以配置这个用户为sudoers
+   	vim /etc/sudoers   //在root行的下一行添加
+   	wangyg  ALL=(ALL)       NOPASSWD:ALL
+   ```
+
+   
+
 6. /opt目录下创建两个module, software文件夹
 
 7. 安装JDK
@@ -217,6 +268,12 @@ scp -r /opt/module root@hadoop102:/opt/module
 
 2. 将公钥拷贝到免密登录的机器上 //或者直接拷贝整个文件也可以，不过较为危险
 
+```
+ssh-copy-id hadoop112
+ssh-copy-id hadoop113
+ssh-copy-id hadoop114
+```
+
 
 
 ##### 群起集群
@@ -294,7 +351,7 @@ start-yarn.sh/ stop-yarn.sh
 
 
 
-##### 集群事件同步
+##### 集群时间同步
 
 ###### 配置时间同步具体步骤(root用户)
 
@@ -738,7 +795,7 @@ public class HdfsClient {
 
 ![1549115215477](assets/1549115215477.png)
 
-1. 客户端通过Distributed FileSystem模块向Namenode请求上传文件，NameNode检查目标文件是否存在
+1. 客户端通过Distributed FileSystem模块向Namenode请求上传文件，NameNode检查目标文件是否存在(如果已经存在，报出file exits错误)
 2. NamNode返回是否可以上传
 3. 客户端请求第一个Block上传到那几个DataNode上
 4. NamNode返回三个DataNode节点，分别是dn1, dn2,dn3
@@ -786,7 +843,7 @@ public class HdfsClient {
 
 1. 第一次启动NamNode格式化后，创建Fsimage和Edits文件，如果不是第一次启动，直接加载编辑日志和镜像文件到内存
 2. 客户端对元数据进行增删改的请求
-3. NamNode记录操作日志，更新滚动日志Edits
+3. NamNode记录操作日志，更新滚动日志Edits log
 4. namenode对内存中的数据进行增删改操作
 
 ###### 第二阶段： secondary NameNode工作
@@ -944,6 +1001,11 @@ sbin/hadoop-daemon.sh start namenode
 3. 心跳是每3秒一次，心跳返回结果带有NamNode给该DataNode的命令 ，如赋值数据到另一台机器，或删除某个数据块，如果超过10分钟没有收到某个DataNode的心跳，则认为该节点不可用
 4. 集群运行中可以安全加入和退出一些机器
 
+```
+DataNode启动后向namenode进行注册，报告节点的块信息等，注册成功后，namenode向datanode发送注册成功，  然后每周期(1小时)上报所有块信息  每三秒一次心跳反应，心跳返回结果带有namenode给datanode的命令
+如果超过10分钟30秒没有心跳反应，则认为该节点已经挂了
+```
+
 ###### DataNode掉线时限参数设置
 
 ```
@@ -1088,13 +1150,226 @@ TimeOut = 2* dfs.namenode.heartbeat.recheck-interval +10*dfs.heartbeat.interval 
 
 > 双NamNode消除单点故障
 
-- 内存中各自保存一份元数据、
+```
+NameNode:双Namenode，内存中葛堡村一份元数据
+QJornalNode：实现Edits的高可用
+Zookeeper：管理两个Namenode的状态(active/standby)
+ZKFC：自动故障转移的一种新组建,
+```
 
-- Edits日志只有Active状态的NameNode节点可以做写操作
+##### 配置HDFS-HA具体步骤
 
-  **TODO**
+```
+1.mkdir ha
+2.安装hadoop2.7.2 到ha目录中，并配置JAVA_HOME
+3.配置core-site.xml
+<configuration>
+<!-- 把两个NameNode）的地址组装成一个集群mycluster -->
+		<property>
+			<name>fs.defaultFS</name>
+        	<value>hdfs://mycluster</value>
+		</property>
+
+		<!-- 指定hadoop运行时产生文件的存储目录 -->
+		<property>
+			<name>hadoop.tmp.dir</name>
+			<value>/opt/ha/hadoop-2.7.2/data/tmp</value>
+		</property>
+</configuration>
+4.配置hdfs-site.xml
+<configuration>
+	<!-- 完全分布式集群名称 -->
+	<property>
+		<name>dfs.nameservices</name>
+		<value>mycluster</value>
+	</property>
+
+	<!-- 集群中NameNode节点都有哪些 -->
+	<property>
+		<name>dfs.ha.namenodes.mycluster</name>
+		<value>nn1,nn2</value>
+	</property>
+
+	<!-- nn1的RPC通信地址 -->
+	<property>
+		<name>dfs.namenode.rpc-address.mycluster.nn1</name>
+		<value>hadoop102:9000</value>
+	</property>
+
+	<!-- nn2的RPC通信地址 -->
+	<property>
+		<name>dfs.namenode.rpc-address.mycluster.nn2</name>
+		<value>hadoop103:9000</value>
+	</property>
+
+	<!-- nn1的http通信地址 -->
+	<property>
+		<name>dfs.namenode.http-address.mycluster.nn1</name>
+		<value>hadoop102:50070</value>
+	</property>
+
+	<!-- nn2的http通信地址 -->
+	<property>
+		<name>dfs.namenode.http-address.mycluster.nn2</name>
+		<value>hadoop103:50070</value>
+	</property>
+
+	<!-- 指定NameNode元数据在JournalNode上的存放位置 -->
+	<property>
+		<name>dfs.namenode.shared.edits.dir</name>
+	<value>qjournal://hadoop102:8485;hadoop103:8485;hadoop104:8485/mycluster</value>
+	</property>
+
+	<!-- 配置隔离机制，即同一时刻只能有一台服务器对外响应 -->
+	<property>
+		<name>dfs.ha.fencing.methods</name>
+		<value>sshfence</value>
+	</property>
+
+	<!-- 使用隔离机制时需要ssh无秘钥登录-->
+	<property>
+		<name>dfs.ha.fencing.ssh.private-key-files</name>
+		<value>/home/atguigu/.ssh/id_rsa</value>
+	</property>
+
+	<!-- 声明journalnode服务器存储目录-->
+	<property>
+		<name>dfs.journalnode.edits.dir</name>
+		<value>/opt/ha/hadoop-2.7.2/data/jn</value>
+	</property>
+
+	<!-- 关闭权限检查-->
+	<property>
+		<name>dfs.permissions.enable</name>
+		<value>false</value>
+	</property>
+
+	<!-- 访问代理类：client，mycluster，active配置失败自动切换实现方式-->
+	<property>
+  		<name>dfs.client.failover.proxy.provider.mycluster</name>
+	<value>org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider</value>
+	</property>
+</configuration>
+```
+
+###### 格式化
+
+```
+1.启动journalnode
+ sbin/hadoop-daemon.sh start journalnode
+2.在nn1上进行格式化 
+bin/hdfs namenode -format
+sbin/hadoop-daemon.sh start namenode
+3.同步nn1的元数据信息
+bin/hdfs namenode -bootstrapStandby
+4.启动nn2
+sbin/hadoop-deamon.sh start namenode
+```
 
 
+
+###### 配置故障自动转移
+
+```
+1.hdfs-site.xml
+<property>
+	<name>dfs.ha.automatic-failover.enabled</name>
+	<value>true</value>
+</property>
+2.配置core-site.xml
+<property>
+	<name>ha.zookeeper.quorum</name>
+	<value>hadoop102:2181,hadoop103:2181,hadoop104:2181</value>
+</property>
+//同步所有集群
+```
+
+###### 启动
+
+```
+1.启动zookeeper集群
+bin/zkServer.sh  start
+2.初始化HA在Zookeeper中状态 //向zookeeper中写入高可用配置数据
+bin/hdfs zkfc -formatZK
+3.启动HDFS服务
+sbin/start-dfs.sh
+4.启动zkfc服务
+sbin/hadoop-daemon.sh start zkfc
+```
+
+##### YARN-HA
+
+![1554529674293](assets/1554529674293.png)
+
+
+
+1.yarn-site.xml
+
+```
+<configuration>
+
+    <property>
+        <name>yarn.nodemanager.aux-services</name>
+        <value>mapreduce_shuffle</value>
+    </property>
+
+    <!--启用resourcemanager ha-->
+    <property>
+        <name>yarn.resourcemanager.ha.enabled</name>
+        <value>true</value>
+    </property>
+ 
+    <!--声明两台resourcemanager的地址-->
+    <property>
+        <name>yarn.resourcemanager.cluster-id</name>
+        <value>cluster-yarn1</value>
+    </property>
+
+    <property>
+        <name>yarn.resourcemanager.ha.rm-ids</name>
+        <value>rm1,rm2</value>
+    </property>
+
+    <property>
+        <name>yarn.resourcemanager.hostname.rm1</name>
+        <value>hadoop102</value>
+    </property>
+
+    <property>
+        <name>yarn.resourcemanager.hostname.rm2</name>
+        <value>hadoop103</value>
+    </property>
+ 
+    <!--指定zookeeper集群的地址--> 
+    <property>
+        <name>yarn.resourcemanager.zk-address</name>
+        <value>hadoop102:2181,hadoop103:2181,hadoop104:2181</value>
+    </property>
+
+    <!--启用自动恢复--> 
+    <property>
+        <name>yarn.resourcemanager.recovery.enabled</name>
+        <value>true</value>
+    </property>
+ 
+    <!--指定resourcemanager的状态信息存储在zookeeper集群--> 
+    <property>
+        <name>yarn.resourcemanager.store.class</name>     <value>org.apache.hadoop.yarn.server.resourcemanager.recovery.ZKRMStateStore</value>
+</property>
+
+</configuration>
+//同步更新其他节点配置信息
+```
+
+2.启动YARN
+
+```
+1.启动yarn
+sbin/start-yarn.sh
+2.启动第二个rm
+sbin/yarn-daemon.sh start resourcemanager
+
+```
 
 
 
@@ -1551,6 +1826,14 @@ status = submitClient.submitJob(jobId, submitJobDir.toString(), job.getCredentia
 - 简单的按照文件的内容长度进行切分，切分大小，默认等于Block大小
 - 切片时不考虑数据集整体，而是逐个对每一个文件单独切片
 
+```
+源码中计算公式：
+Math.max(minSize, Math.min(maxSize, blockSize))
+minsize =1  maxSize= Long.MAX_VALUE blockSize=128M
+让切片变小：让maxSize < blocksize
+让切片变大：让minSize > blockSize
+```
+
 
 
 #####  CombineTextInputFormat切片机制
@@ -1588,6 +1871,14 @@ status = submitClient.submitJob(jobId, submitJobDir.toString(), job.getCredentia
   1.7M，（2.55M、2.55M），3.4M以及（3.4M、3.4M）
   最终会形成3个切片，大小分别为：
   （1.7+2.55）M，（2.55+3.4）M，（3.4+3.4）M
+
+  ```
+  1.setMaxInputSplitSize(4m)
+  2.首先比对小文件，如果小文件大小 <4m,不进行切分
+   如果：>4m && <  2* 4 ，就平均进行切分
+  如果大于两倍的splitSize ,就 鲜花分一个splitSize大小，然后判断以上逻辑，是否还大于2倍
+  3.最后进行合并，将切分后的小文件进行合并，最终合并后的文件大于splitSize
+  ```
 
   
 
@@ -3428,7 +3719,23 @@ public class MapjoinMapper extends Mapper<LongWritable, Text, Text,NullWritable>
 
 ![1551061543005](assets/1551061543005.png)
 
-
+```
+1.RM:(resourceManager)
+处理客户端请求
+监控nodeManager
+启动或监控ApplicationMaster
+资源的分配与调度
+2.NodeManager(NM)
+管理单个节点上的资源
+处理来自redourceManager的命令
+处理来自AppMaster的命令
+3.ApplicationMaster
+负责任务的切分
+为应用程序申请资源并分配给内部的任务
+任务的监控与容错
+4.Container
+container是YARN中资源的抽象，它封装了某个节点上的资源：内存，CPU,磁盘，网络等
+```
 
 ##### yarn工作机制：
 
@@ -3437,18 +3744,18 @@ public class MapjoinMapper extends Mapper<LongWritable, Text, Text,NullWritable>
 ```
 	（1）MR程序提交到客户端所在的节点。
 	（2）YarnRunner向ResourceManager申请一个Application。
-	（3）RM将该应用程序的资源路径返回给YarnRunner。
+	（3）RM将该应用程序的资源路径和application_id返回给YarnRunner。
 	（4）该程序将运行所需资源提交到HDFS上。
 	（5）程序资源提交完毕后，申请运行mrAppMaster。
 	（6）RM将用户的请求初始化成一个Task。
 	（7）其中一个NodeManager领取到Task任务。
 	（8）该NodeManager创建容器Container，并产生MRAppmaster。
 	（9）Container从HDFS上拷贝资源到本地。
-	（10）MRAppmaster向RM 申请运行MapTask资源。
+	（10）MRAppmaster向RM 申请运行MapTask资源。任务转化成task，放入在任务队列中
 	（11）RM将运行MapTask任务分配给另外两个NodeManager，另两个NodeManager分别领取任务并创建容器。
-	（12）MR向两个接收到任务的NodeManager发送程序启动脚本，这两个NodeManager分别启动MapTask，MapTask对数据分区排序。
+	（12）MR向两个接收到任务的NodeManager发送程序启动脚本，这两个NodeManager分别启动MapTask，MapTask对数据进行处理
 	（13）MrAppMaster等待所有MapTask运行完毕后，向RM申请容器，运行ReduceTask。
-	（14）ReduceTask向MapTask获取相应分区的数据。
+	（14）ReduceTask向MapTask获取相应分区的数据。进行处理reduce阶段
 	（15）程序运行完毕后，MR会向RM申请注销自己。
 ```
 
@@ -3591,4 +3898,10 @@ hdfs中文件都需要在namenode上建立索引，然后保存在namenode上，
 #### 调优参数：mapreduce.job.reduce.slowstart.completedmaps
 
 https://blog.csdn.net/qq1010234991/article/details/87864654
+
+
+
+
+
+
 

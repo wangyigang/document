@@ -69,6 +69,17 @@ bin/spark-submit --class <main-class> --master <master-url> --deploy-mode <deplo
 
 ```
 //更多详细内容可直接bin/spark-submit ，点击确定查看
+spark-submit \
+  --master local[5]  \
+  --driver-cores 2   \
+  --driver-memory 8g \
+  --executor-cores 4 \
+  --num-executors 10 \
+  --executor-memory 8g \
+  --class PackageName.ClassName XXXX.jar \
+  --name "Spark Job Name" \
+  InputPath      \
+  OutputPath
 ```
 
 ###### spark-shell
@@ -359,9 +370,9 @@ spark-shuffle过程落盘
 
 ##### RDD是啥
 
-> RDD(Resilient Distributed Dataset), 弹性分布式数据集,是Sparkd中最基本的数据抽象,spark计算的基石，为用户屏蔽了底层对数据的复杂抽象和处理，为用户提供了一组方便的数据转换与求值方法
+> RDD(Resilient Distributed Dataset), 弹性**分布式**数据集,是Sparkd中最基本的数据抽象,spark计算的基石，为用户屏蔽了底层对数据的复杂抽象和处理，为用户提供了一组方便的数据转换与求值方法
 >
-> 不可变，可分区(把数据分成多个), 弹性
+> 代表一个不可变的，可分区的，里面的元素可以并行计算的集合
 
 ```
 //RDD源码
@@ -910,7 +921,9 @@ cache实质上调用的是persist()
 >
 > 自定义分区
 
+```
 
+```
 
 ##### 数据读取与保存
 

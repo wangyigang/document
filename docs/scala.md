@@ -1059,13 +1059,32 @@ println(v) //打印生成的是tuple
 
 ##### Set
 
-> 集合： 不可重复元素的集合，不保留顺序,不重复,默认底层是hash实现
+> 集合： 不可重复元素的集合，不保留顺序,不重复,默认底层是hash实现，有两种实现不可变的和可变的mutable.Set
 
+```
+def test9(): Unit = {
+    val set = Set(1, 2, 3)  //不可变的set
+    println(set)
+    val set2 = mutable.Set(1,2,3)
+    println(set2)
+    //添加元素
+    set2+=6
+    set2+=(5)
+    set2.add(3)
+    println(set2)
 
+    //元素的删除
+    set2-=2
+    set2-=(4)
+    set2.remove(100)
+    println(set2)
 
-
-
-
+    //set的遍历
+    for (elem <- set) {
+      println(elem)
+    }
+  }
+```
 
 
 
@@ -1169,6 +1188,59 @@ object ReduceLeftTest {
     n1 + n2
   }
 }
+```
+
+
+
+
+
+##### 并行计算par
+
+```
+//可以充分利用多核的优势，提高效率
+
+使用par进行并行计算
+val list = List(1, 2, 3, 4, 5)
+list.par.map(println(_))
+```
+
+
+
+##### 扩展-操作符
+
+```
+ def test11(): Unit = {
+    val money = new Money;
+    money + (10)
+    money.+(10)
+    println(money.money)
+
+    println(money ++) //后置操作符重载
+
+    println(!money)
+  }
+
+  class Money {
+    var money: Int = 0
+
+    //中置操作符重载
+    def +(n: Int) = {
+      this.money += n
+    }
+
+    //后置操作符重载
+    def ++(): Int = {
+      this.money += 1
+      this.money
+    }
+
+    //前置操作符重载
+    def unary_!() {
+      this.money = -this.money
+      this.money
+    }
+
+  }
 ```
 
 
@@ -1317,6 +1389,61 @@ def test5(): Unit = {
 
 ​	返回None集合则匹配失败
 
+```
+ //对象匹配
+  def test9(): Unit = {
+    val  number:Double = 36.0
+    number match {
+      case Square(n) => println(n)  //进行模式匹配时，会调用unapply
+      case _=> println("nothing matched..")
+    }
+  }
+  object Square{
+    //对象拆解方法--对象提取方法--对象提取器 范湖一个Option集合
+    def unapply(z: Double): Option[Double] = Some(math.sqrt(z))
+    //对象构造方法
+    def apply(z:Double): Double= z*z
+  }
+
+```
+
+
+
+```scala
+ //对象提取器
+  def test8(): Unit = {
+    val nameString = "Alice,Bob,Thomas" //字符串
+    nameString match {
+      case Names(first, second, third) => {
+        println(first + ":" + second + ":" + third)
+      }
+      case _ => println("nothing method")
+    }
+  }
+//具体的类
+object Names {
+  def unapplySeq(str: String): Option[Seq[String]] = {
+    if (str.contains(","))
+      Some(str.split(","))
+    else
+      None
+  }
+}
+```
+
+
+
+##### for表达式中的模式
+
+```
+  def test7(): Unit = {
+    val map = Map("a"->1, "b"->0, "c"->3)
+    for ((k,v) <- map if v==0){
+      println(k +"->"+v)
+    }
+  }
+```
+
 
 
 ##### 样例类
@@ -1399,9 +1526,79 @@ case Bundle(_, _, art @ Book(_, _), rest) => (art, rest)
   }
 ```
 
+##### 密封类
+
+> sealed :密封类的所有子类都必须在该密封类相同的文件中定义
+
 
 
 ### 函数式编程高级
+
+##### 偏函数(partial function)
+
+> 1.对复合某个条件，而不是所有情况进行逻辑操作时，使用偏函数是一个不错的选择,
+>
+> 2.将包在大括号内的一组case语句封装为函数，称之为偏函数，它只对会作用于指定类型的参数或指定范围内的参数实行计算，超过范围内的值会忽略(取决于你如何处理)
+>
+> 3.偏函数在scala中是一个特质PartialFunctio
+
+```
+ //偏函数方式--偏函数只对符合条件的函数进行处理，如果符合isDefinedAt()函数，就会调用apply方法，否则不执行apply
+  def test6(): Unit ={
+    val list = List(1,2,3,4,"abc")
+    var par = new PartialFunction[Any, Int] {
+      //判断是否是int类型
+      override def isDefinedAt(x: Any): Boolean = {
+        x.isInstanceOf[Int]
+      }
+
+      override def apply(v1: Any): Int = {
+        v1.asInstanceOf[Int]+2
+      }
+    }
+    val list2 = list.collect(par)
+    println(list2)
+  }
+```
+
+
+
+###### 偏简化形式
+
+简化形式1：
+
+```
+def test2(): Unit ={
+    def f2:PartialFunction[Any, Int] ={
+      case i:Int => i+1
+      case j:Double =>(j*2).toInt
+    }
+    val list = List(1,2,3.2,4.5,"hello")
+    val list2 = list.collect(f2)
+    println("list2="+list2)
+  }
+```
+
+简化形式2：
+
+```
+ //偏函数的简化形式2：
+  def test3(): Unit ={
+    val list = List(1,2,3,4,1.2,2.5, "hello")
+    val list2 = list.collect({
+      case i:Int => i+1
+      case j:Double => (j*2).toInt
+      case k:String => k+":haha"
+    })
+    println("list2="+list2)
+  }
+```
+
+
+
+##### 作为参数的函数
+
+> 函数作为一个变量传入到另一个函数中，那么参数的类型是:<function>
 
 ##### 匿名函数
 
@@ -1554,30 +1751,30 @@ object CurliTest {
 函数参数没有输入值也没有返回值
 ```
 
-- code:实现类似while循环
+code:实现类似while循环
 
-  ```scala
-  //特点：控制抽象实质上是参数是函数，  函数参数没有输入也没有返回值
-  //再使用递归的特性，处理数据
-    def util(condition: =>Boolean)(block: => Unit):Unit = {
-      if (condition){
-        block
-        util(condition)(block)
-      }
+```scala
+//特点：控制抽象实质上是参数是函数，  函数参数没有输入也没有返回值
+//再使用递归的特性，处理数据
+  def util(condition: =>Boolean)(block: => Unit):Unit = {
+    if (condition){
+      block
+      util(condition)(block)
     }
-  
-    //函数作为scala一等公民的具体体现
-    //实现类似while()循环函数
-    def abstractcontrolTest(): Unit ={
-      var x =10
-      util(x>0){
-        x-=1
-        println("until x="+x)
-      }
-    }
-  ```
+  }
 
-  
+  //函数作为scala一等公民的具体体现
+  //实现类似while()循环函数
+  def abstractcontrolTest(): Unit ={
+    var x =10
+    util(x>0){
+      x-=1
+      println("until x="+x)
+    }
+  }
+```
+
+
 
 ### 递归方式编程
 

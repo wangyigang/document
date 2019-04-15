@@ -25,7 +25,6 @@
 
   1. 单机模式，伪集群模式和集群模式
   2. leader和follower
-  3. 3
 
 ## Hadoop
 
@@ -161,17 +160,20 @@ Hadoop生态系统包括许多框架
 
 > 在集群上分发配置好的Hadoop配置文件
 
-
+> 调优配置堆大小，在env.sh中
+>
 
 ## 简述Hadoop几个默认端口及含义
 
 ```
 50070：namenode访问地址
+50075: datanode节点
 50090:2nn辅助节点访问端口号
 50010:datanode访问端口号
 9000: hdfs的rpc端口
-8088: yarn 访问端口号
+8088: yarn 访问端口号  --非常有用
 19888: web历史访问端口
+
 ```
 
 
@@ -271,6 +273,14 @@ HDFS采用master/slave架构，一个HDFS集群由一个namenode和一定的data
 8. NamNode将fsimage.chkpoint重新命名成fsimage
 
 
+
+##### inputformat
+
+parqut：
+
+![1555292870633](assets/1555292870633.png)
+
+##### 
 
 
 
@@ -515,13 +525,10 @@ command: a : 下一行新增字符
 
 ```
 基本语法： sort (选项) (参数)
-选项： -n :依照数值大小排序
+选项：	  -n :依照数值大小排序
 		-r : 逆序
 		-t: 设置排序分隔符
 		-k: 指定排序的列
 ```
-
-
-
 
 

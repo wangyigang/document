@@ -3093,15 +3093,819 @@ class Solution {
 
 
 
+## 04. 寻找两个有序数组的中位数
+
+> 给定两个大小为 m 和 n 的有序数组 `nums1` 和 `nums2`。
+>
+> 请你找出这两个有序数组的中位数，并且要求算法的时间复杂度为 O(log(m + n))。
+>
+> 你可以假设 `nums1` 和 `nums2` 不会同时为空。
+>
+> **示例 1:**
+>
+> ```
+> nums1 = [1, 3]
+> nums2 = [2]
+> 
+> 则中位数是 2.0
+> ```
+>
+> **示例 2:**
+>
+> ```
+> nums1 = [1, 2]
+> nums2 = [3, 4]
+> 
+> 则中位数是 (2 + 3)/2 = 2.5
+> ```
+
+```java
+class Solution {
+ public double findMedianSortedArrays(int[] A, int[] B) {
+        int m = A.length;
+        int n = B.length;
+        if (m > n) { // m指向小的数组， n 指向大的数组
+            int[] temp = A;
+            A = B;
+            B = temp; //数组内容交换
+            int tmp = m;
+            m = n;
+            n = tmp;  //数组长度进行交换
+        }
+        //
+        int iMin = 0;
+        int iMax = m;  //
+        int halfLen = (m + n + 1) / 2;   //m+n+1/2指向中间值
+        while (iMin <= iMax) {
+            int i = (iMin + iMax) / 2;
+            int j = halfLen - i;  //最后一个
+            if (i < iMax && B[j - 1] > A[i]) { 
+                iMin = i + 1; // i is too small
+            } else if (i > iMin && A[i - 1] > B[j]) {
+                iMax = i - 1; // i is too big
+            } else { // i is perfect
+                int maxLeft = 0;
+                if (i == 0) {
+                    maxLeft = B[j - 1];
+                } else if (j == 0) {
+                    maxLeft = A[i - 1];
+                } else {
+                    maxLeft = Math.max(A[i - 1], B[j - 1]);
+                }
+                if ((m + n) % 2 == 1) {
+                    return maxLeft;
+                }
+
+                int minRight = 0;
+                if (i == m) {
+                    minRight = B[j];
+                } else if (j == n) {
+                    minRight = A[i];
+                } else {
+                    minRight = Math.min(B[j], A[i]);
+                }
+                return (maxLeft + minRight) / 2.0;
+            }
+        }
+        return 0.0;
+    }
+}
+```
+
+
+
+## 05Longest Palindromic Substring-最长回文子串 
+
+> 给定一个字符串 `s`，找到 `s` 中最长的回文子串。你可以假设 `s` 的最大长度为 1000。
+>
+> **示例 1：**
+>
+> ```
+> 输入: "babad"
+> 输出: "bab"
+> 注意: "aba" 也是一个有效答案。
+> ```
+>
+> **示例 2：**
+>
+> ```
+> 输入: "cbbd"
+> 输出: "bb"
+> ```
+
+```java
+class Solution {
+  public String longestPalindrome(String s) {
+        if (s == null || s.length() < 1)
+            return "";
+        int start = 0, end = 0;  //记录起始位置和结束位置
+        for (int i = 0; i < s.length(); i++) {
+            //按照奇数方式扩展
+            int len1 = expandAroundCenter(s, i, i);
+            //按照偶数方式进行扩展
+            int len2 = expandAroundCenter(s, i, i + 1);
+            int len = Math.max(len1, len2);
+            if (len > end - start) {//如果长度大于现有的长度，进行替换
+                start = i - (len - 1) / 2; //赋值起始索引
+                end = i + len / 2; //结束索引
+            }
+        }
+        return s.substring(start, end + 1);  //截取字符串，并返回
+    }
+
+    private int expandAroundCenter(String s, int left, int right) {
+        int L = left, R = right;
+        //判断左右两侧数据是否相同
+        while (L >= 0 && R < s.length() && s.charAt(L) == s.charAt(R)) {
+            //1.判断没有越界2. 左边的值和右边的值相同
+            L--;
+            R++;
+        }
+        return R - L - 1;
+    }
+}
+```
+
+## 06.Z 字形变换
+
+> 将一个给定字符串根据给定的行数，以从上往下、从左到右进行 Z 字形排列。
+>
+> 比如输入字符串为 `"LEETCODEISHIRING"` 行数为 3 时，排列如下：
+>
+> ```
+> L   C   I   R
+> E T O E S I I G
+> E   D   H   N
+> ```
+>
+> 之后，你的输出需要从左往右逐行读取，产生出一个新的字符串，比如：`"LCIRETOESIIGEDHN"`。
+>
+> 请你实现这个将字符串进行指定行数变换的函数：
+>
+> ```
+> string convert(string s, int numRows);
+> ```
+>
+> **示例 1:**
+>
+> ```
+> 输入: s = "LEETCODEISHIRING", numRows = 3
+> 输出: "LCIRETOESIIGEDHN"
+> ```
+>
+> **示例 2:**
+>
+> ```
+> 输入: s = "LEETCODEISHIRING", numRows = 4
+> 输出: "LDREOEIIECIHNTSG"
+> 解释:
+> 
+> L     D     R
+> E   O E   I I
+> E C   I H   N
+> T     S     G
+> ```
+
+
+
+```
+  public String convert(String s, int numRows) {
+        if (numRows == 1)
+            return s;
+        char[][] arr = new char[numRows][s.length()];
+        int row = 0; //行
+        int col = 0;  //列
+        int flag = 2;
+        for (int k = 0; k < s.length(); k++) {
+            arr[row][col] = s.charAt(k);
+            if (flag == 2)
+                row++;
+            if (row >= numRows) {
+                flag = 1;
+                row = numRows - 1;
+            }
+            if (flag == 1) {
+                row--;
+                col++;
+                if (row < 0) {
+                    row = 1;
+                    flag = 2;
+                }
+            }
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int m = 0; m < numRows; m++) {
+            for (int n = 0; n < s.length(); n++) {
+                if (arr[m][n] >= ' ') {  //' '的ascII32,所以大于32的所有字符都可以进入数组中
+                    sb.append(arr[m][n]);
+                }
+            }
+        }
+        return sb.toString();
+    }
+```
 
 
 
 
 
+## 08.字符串转换整数(atoi)
+
+> 请你来实现一个 `atoi` 函数，使其能将字符串转换成整数。
+>
+> 首先，该函数会根据需要丢弃无用的开头空格字符，直到寻找到第一个非空格的字符为止。
+>
+> 当我们寻找到的第一个非空字符为正或者负号时，则将该符号与之后面尽可能多的连续数字组合起来，作为该整数的正负号；假如第一个非空字符是数字，则直接将其与之后连续的数字字符组合起来，形成整数。
+>
+> 该字符串除了有效的整数部分之后也可能会存在多余的字符，这些字符可以被忽略，它们对于函数不应该造成影响。
+>
+> 注意：假如该字符串中的第一个非空格字符不是一个有效整数字符、字符串为空或字符串仅包含空白字符时，则你的函数不需要进行转换。
+>
+> 在任何情况下，若函数不能进行有效的转换时，请返回 0。
+>
+> **说明：**
+>
+> 假设我们的环境只能存储 32 位大小的有符号整数，那么其数值范围为 [−231,  231 − 1]。如果数值超过这个范围，qing返回  INT_MAX (231 − 1) 或 INT_MIN (−231) 。
+>
+> **示例 1:**
+>
+> ```
+> 输入: "42"
+> 输出: 42
+> ```
+>
+> **示例 2:**
+>
+> ```
+> 输入: "   -42"
+> 输出: -42
+> 解释: 第一个非空白字符为 '-', 它是一个负号。
+>      我们尽可能将负号与后面所有连续出现的数字组合起来，最后得到 -42 。
+> ```
+>
+> **示例 3:**
+>
+> ```
+> 输入: "4193 with words"
+> 输出: 4193
+> 解释: 转换截止于数字 '3' ，因为它的下一个字符不为数字。
+> ```
+>
+> **示例 4:**
+>
+> ```
+> 输入: "words and 987"
+> 输出: 0
+> 解释: 第一个非空字符是 'w', 但它不是数字或正、负号。
+>      因此无法执行有效的转换。
+> ```
+>
+> **示例 5:**
+>
+> ```
+> 输入: "-91283472332"
+> 输出: -2147483648
+> 解释: 数字 "-91283472332" 超过 32 位有符号整数范围。 
+>      因此返回 INT_MIN (−231) 。
+> ```
+
+```java
+class Solution {
+
+    public int myAtoi(String str) {
+        str = str.trim();
+        if (str == null || str.length() == 0) {
+            return 0;
+        }
+        //判断符号位和起始位
+        int start = 0;
+        boolean positiveFlag = false;
+        if (str.charAt(0) == '+') {
+            start = 1;
+            positiveFlag = true;
+        } else if (str.charAt(0) == '-') {
+            start = 1;
+        } else {
+            positiveFlag = true;
+        }
+        long result = 0;
+        for (int i = start; i < str.length(); i++) {
+            char tmp = str.charAt(i);
+            if (tmp >= '0' && tmp <= '9') {
+                //-91283472332
+                result = result * 10 + (tmp - '0');
+                //判断是否越界
+                if (positiveFlag) {
+                    if (result > Integer.MAX_VALUE) {
+//                        throw new RuntimeException("上溢出...");
+                        return Integer.MAX_VALUE;
+                    }
+                } else {
+                    //所以核心问题还是此处，再即将溢出时的比较，如果小于整数最小值，返回最小值
+                    if (-1*result < Integer.MIN_VALUE) {
+//                        throw new RuntimeException("下溢出..");
+                        return Integer.MIN_VALUE;
+                    }
+                }
+            } else {
+                break; //直接返回0
+            }
+        }
+        //判断符号位
+        if (positiveFlag) {
+            return  (int)result;
+        } else {
+            return (int) (-1 * result);
+
+        }
+    }
+}
+```
+
+## 09回文数
+
+> 判断一个整数是否是回文数。回文数是指正序（从左向右）和倒序（从右向左）读都是一样的整数。
+>
+> **示例 1:**
+>
+> ```
+> 输入: 121
+> 输出: true
+> ```
+>
+> **示例 2:**
+>
+> ```
+> 输入: -121
+> 输出: false
+> 解释: 从左向右读, 为 -121 。 从右向左读, 为 121- 。因此它不是一个回文数。
+> ```
+>
+> **示例 3:**
+>
+> ```
+> 输入: 10
+> 输出: false
+> 解释: 从右向左读, 为 01 。因此它不是一个回文数。
+> ```
+
+
+
+```
+public class Test09 {
+    @Test
+    public void test() {
+        int x = 121;
+        System.out.println(isPalindrome(x));
+    }
+
+    public boolean isPalindrome(int x) {
+        String str = x + "";
+        int left = 0;
+        int right = str.length() - 1;
+        while (left < right) {
+            if (str.charAt(left) == str.charAt(right)) {
+                left++;
+                right--;
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+```
+
+## 11. 盛最多水的容器
+
+> 给定 *n* 个非负整数 *a*1，*a*2，...，*a*n，每个数代表坐标中的一个点 (*i*, *ai*) 。在坐标内画 *n* 条垂直线，垂直线 *i* 的两个端点分别为 (*i*, *ai*) 和 (*i*, 0)。找出其中的两条线，使得它们与 *x* 轴共同构成的容器可以容纳最多的水。
+>
+> **说明：**你不能倾斜容器，且 *n* 的值至少为 2。
+>
+> ![img](assets/question_11.jpg)
+>
+> 图中垂直线代表输入数组 [1,8,6,2,5,4,8,3,7]。在此情况下，容器能够容纳水（表示为蓝色部分）的最大值为 49。
+>
+>  
+>
+> **示例:**
+>
+> ```
+> 输入: [1,8,6,2,5,4,8,3,7]
+> 输出: 49
+> ```
+
+```
+
+import org.junit.Test;
+
+public class Solution {
+    /*
+         Input: [1,8,6,2,5,4,8,3,7]
+        Output: 49
+     */
+    @Test
+    public void test() {
+        int[] arr = new int[]{1, 8, 6, 2, 5, 4, 8, 3, 7};
+        System.out.println(maxArea(arr));
+    }
+
+    public int maxArea(int[] a) {
+        int max = 0;
+        //初始化i, j两个变量，i指向起始位置， j指向数组的最后一个位置
+        for (int i = 0, j = a.length - 1; i < j; ) {
+            int minHeight = a[i] < a[j] ? a[i++] : a[j--]; //比较a[i] a[j]谁比较低，就用谁的高度,然后左边向右移动， 右边向左移动
+            max = Math.max(max, (j - i + 1) * minHeight); // 比较最大的棉衣和原来的max进行比较，比较结束后，返回最大的值
+        }
+        return max;
+    }
+}
+```
+
+## 14.最长公共前缀
+
+> 编写一个函数来查找字符串数组中的最长公共前缀。
+>
+> 如果不存在公共前缀，返回空字符串 `""`。
+>
+> **示例 1:**
+>
+> ```
+> 输入: ["flower","flow","flight"]
+> 输出: "fl"
+> ```
+>
+> **示例 2:**
+>
+> ```
+> 输入: ["dog","racecar","car"]
+> 输出: ""
+> 解释: 输入不存在公共前缀。
+> ```
+>
+> **说明:**
+>
+> 所有输入只包含小写字母 `a-z` 。
+
+```java
+class Solution {
+   public String longestCommonPrefix(String[] strs) {
+        //考虑异常场景
+        if(strs==null || strs.length ==0){
+            return "";
+        }
+        String str ="";
+        for(int i=0; i<strs[0].length(); i++){
+           str= strs[0].substring(0, i+1);
+//            System.out.println(str);
+            for (String s : strs) {
+                if(!s.startsWith(str)){
+                    return str.substring(0, str.length()-1);
+                }
+            }
+        }
+        return strs[0];
+    }
+}
+```
+
+## 15.三数之和
+
+> 给定一个包含 *n* 个整数的数组 `nums`，判断 `nums` 中是否存在三个元素 *a，b，c ，*使得 *a + b + c =* 0 ？找出所有满足条件且不重复的三元组。
+>
+> **注意：**答案中不可以包含重复的三元组。
+>
+> ```
+> 例如, 给定数组 nums = [-1, 0, 1, 2, -1, -4]，
+> 
+> 满足要求的三元组集合为：
+> [
+>   [-1, 0, 1],
+>   [-1, -1, 2]
+> ]
+> ```
+
+
+
+```
+class Solution {
+  public List<List<Integer>> threeSum(int[] nums) {
+        //二分法首先要求有序
+        Arrays.sort(nums);
+        //创建返回列表容器
+        List<List<Integer>> result = new ArrayList<>();
+        for (int i = 0; i < nums.length - 2; i++) {
+            if (i == 0 || (i > 0 && nums[i] != nums[i - 1])) {
+                if (i == 0 || (i > 0 && nums[i] != nums[i - 1])) {
+                    int left = i + 1;
+                    int right = nums.length - 1;
+                    int sum = 0 - nums[i]; //这样就变成了二分法找到左和右的
+                    while (left < right) {
+                        if (nums[left] + nums[right] == sum) {
+                            result.add(Arrays.asList(nums[left], nums[right], nums[i]));
+                            //然后排除重复的元素，继续进行查找是否还有复合条件的 元素
+                            while (left < right && nums[left] == nums[left + 1]) left++; //
+                            while (left < right && nums[right] == nums[right - 1]) right--;
+                            left++;
+                            right--;
+                        } else if (nums[left] + nums[right] > sum) {
+                            while (left < right && nums[right] == nums[right - 1]) right--; //跳过重复元素
+                            right--;  //向左移动
+                        }else {
+                            while(left<right && nums[left] == nums[left+1]) left++;
+                            left++;
+                        }
+                    }
+                }
+            }
+        }
+        return result;
+    }
+}
+```
+
+## 16. 最接近的三数之和
+
+> 给定一个包括 *n* 个整数的数组 `nums` 和 一个目标值 `target`。找出 `nums` 中的三个整数，使得它们的和与 `target` 最接近。返回这三个数的和。假定每组输入只存在唯一答案。
+>
+> ```
+> 例如，给定数组 nums = [-1，2，1，-4], 和 target = 1.
+> 
+> 与 target 最接近的三个数的和为 2. (-1 + 2 + 1 = 2).
+> ```
+
+```
+class Solution {
+   public int threeSumClosest(int[] nums, int target) {
+        //首先进行排序
+        Arrays.sort(nums);
+        //
+        int closestNum = nums[0] + nums[1] + nums[2];
+        for(int i=0; i<nums.length-2; i++){
+            int left = i+1;
+            int right = nums.length-1;
+            while(left< right){
+                int threeSum = nums[i]+nums[left] + nums[right];
+                if (Math.abs(threeSum - target) < Math.abs(closestNum - target)) {
+                    closestNum = threeSum;
+                }
+
+                if(threeSum>target){
+                    right--;
+                }else if(threeSum< target) {
+                    left++;
+                }else {
+                    return closestNum;
+                }
+            }
+        }
+        return closestNum;
+    }
+}
+```
+
+
+
+## 122.买卖股票的最佳时期
+
+> 给定一个数组，它的第 *i* 个元素是一支给定股票第 *i* 天的价格。
+>
+> 设计一个算法来计算你所能获取的最大利润。你可以尽可能地完成更多的交易（多次买卖一支股票）。
+>
+> **注意：**你不能同时参与多笔交易（你必须在再次购买前出售掉之前的股票）。
+>
+> **示例 1:**
+>
+> ```
+> 输入: [7,1,5,3,6,4]
+> 输出: 7
+> 解释: 在第 2 天（股票价格 = 1）的时候买入，在第 3 天（股票价格 = 5）的时候卖出, 这笔交易所能获得利润 = 5-1 = 4 。
+>      随后，在第 4 天（股票价格 = 3）的时候买入，在第 5 天（股票价格 = 6）的时候卖出, 这笔交易所能获得利润 = 6-3 = 3 。
+> ```
+>
+> **示例 2:**
+>
+> ```
+> 输入: [1,2,3,4,5]
+> 输出: 4
+> 解释: 在第 1 天（股票价格 = 1）的时候买入，在第 5 天 （股票价格 = 5）的时候卖出, 这笔交易所能获得利润 = 5-1 = 4 。
+>      注意你不能在第 1 天和第 2 天接连购买股票，之后再将它们卖出。
+>      因为这样属于同时参与了多笔交易，你必须在再次购买前出售掉之前的股票。
+> ```
+>
+> **示例 3:**
+>
+> ```
+> 输入: [7,6,4,3,1]
+> 输出: 0
+> 解释: 在这种情况下, 没有交易完成, 所以最大利润为 0。
+> ```
+
+
+
+```
+public class Solution {
+    @Test
+    public void test(){
+        int[] prices = new int[]{7,1,5,3,6,4};
+        System.out.println(maxProfit(prices));
+    }
+    //求取最大利润
+    public int maxProfit(int[] prices) {
+        int money = 0;
+        for(int i = 0; i < prices.length - 1; i++) {
+            if(prices[i] < prices[i+1]) {
+                money += prices[i+1] - prices[i];
+            }
+        }
+        return money;
+    }
+}
+```
+
+
+
+## 300.最长上升子序列
 
 
 
 
+
+```java
+public class Solution {
+    @Test
+    public void test() {
+        int[] nums = new int[]{10, 9, 2, 5, 3, 7, 101, 18};
+        System.out.println(lengthOfLIS(nums));
+    }
+ 	public static int n;
+    public static int[] f = new int[10000];
+    public static int[] p = new int[10000];
+
+    //进行优化--递归改为非递归方式，递归部分全部从缓存中获取
+    public int lengthOfLIS(int[] nums) {
+        for (int i = 0; i < 10000; i++) {
+            f[i] = 0;
+        }
+        for (int i = 0; i < nums.length; i++) {
+            p[i] = nums[i];
+        }
+        n = nums.length;
+        p[n] = 1000000000;
+        ++n;
+        for (int idx = 0; idx < n; ++idx) {
+            int ans = 0;
+            for (int i = 0; i < idx; ++i) {
+                if (p[idx] > p[i]) {
+                    ans = Math.max(ans, f[i]);
+                }
+            }
+            f[idx] = ans + 1;
+
+        }
+        return f[n - 1] - 1;
+    }
+
+    //时间复杂度：O(n2)
+//    public int lengthOfLIS(int[] nums) {
+//        int len = nums.length;
+//        if (len < 2) {
+//            return len;
+//        }
+//        int[] dp = new int[len];
+//        // 自己一定是一个子序列
+//        Arrays.fill(dp, 1);
+//        for (int i = 1; i < len; i++) {
+//            for (int j = 0; j < i; j++) {
+//                if (nums[j] < nums[i]) {
+//                    dp[i] = Math.max(dp[j] + 1, dp[i]);
+//                }
+//            }
+//        }
+//        int res = dp[0];
+//        for (int i = 0; i < len; i++) {
+//            res = Math.max(res, dp[i]);
+//        }
+//        return res;
+//    }
+}
+```
+
+
+
+## 944.删列造序
+
+> 给定由 `N` 个小写字母字符串组成的数组 `A`，其中每个字符串长度相等。
+>
+> 选取一个删除索引序列，对于 `A` 中的每个字符串，删除对应每个索引处的字符。 所余下的字符串行从上往下读形成列。
+>
+> 比如，有 `A = ["abcdef", "uvwxyz"]`，删除索引序列 `{0, 2, 3}`，删除后 `A` 为`["bef", "vyz"]`， `A` 的列分别为`["b","v"], ["e","y"], ["f","z"]`。（形式上，第 n 列为 `[A[0][n], A[1][n], ..., A[A.length-1][n]]`）。
+>
+> 假设，我们选择了一组删除索引 `D`，那么在执行删除操作之后，`A` 中所剩余的每一列都必须是 **非降序** 排列的，然后请你返回 `D.length` 的最小可能值。
+>
+> **示例 1：**
+>
+> ```
+> 输入：["cba", "daf", "ghi"]
+> 输出：1
+> 解释：
+> 当选择 D = {1}，删除后 A 的列为：["c","d","g"] 和 ["a","f","i"]，均为非降序排列。
+> 若选择 D = {}，那么 A 的列 ["b","a","h"] 就不是非降序排列了。
+> ```
+>
+> **示例 2：**
+>
+> ```
+> 输入：["a", "b"]
+> 输出：0
+> 解释：D = {}
+> ```
+>
+> **示例 3：**
+>
+> ```
+> 输入：["zyx", "wvu", "tsr"]
+> 输出：3
+> 解释：D = {0, 1, 2}
+> ```
+>
+> **提示：**
+>
+> 1. `1 <= A.length <= 100`
+> 2. `1 <= A[i].length <= 1000`
+
+```
+
+/*
+给定由 N 个小写字母字符串组成的数组 A，其中每个字符串长度相等。
+选取一个删除索引序列，对于 A 中的每个字符串，删除对应每个索引处的字符。 所余下的字符串行从上往下读形成列。
+比如，有 A = ["abcdef", "uvwxyz"]，删除索引序列 {0, 2, 3}，删除后 A 为["bef", "vyz"]，
+ A 的列分别为["b","v"], ["e","y"], ["f","z"]。（形式上，第 n 列为 [A[0][n], A[1][n], ..., A[A.length-1][n]]）。
+假设，我们选择了一组删除索引 D，那么在执行删除操作之后，A 中所剩余的每一列都必须是 非降序 排列的，然后请你返回 D.length 的最小可能值。
+
+示例 1：
+输入：["cba", "daf", "ghi"]
+输出：1
+解释：
+当选择 D = {1}，删除后 A 的列为：["c","d","g"] 和 ["a","f","i"]，均为非降序排列。
+若选择 D = {}，那么 A 的列 ["b","a","h"] 就不是非降序排列了。
+
+示例 2：
+输入：["a", "b"]
+输出：0
+解释：D = {}
+
+示例 3：
+输入：["zyx", "wvu", "tsr"]
+输出：3
+解释：D = {0, 1, 2}
+ */
+public class Test944 {
+    @Test
+    public void test() {
+        String[] arr1 = new String[]{"cba", "daf", "ghi"}; //1
+        String[] arr2 = new String[]{"a", "b"};  //0
+        String[] arr3 = new String[]{"zyx", "wvu", "tsr"}; //3
+        System.out.println(minDeletionSize(arr1));
+        System.out.println(minDeletionSize(arr2));
+        System.out.println(minDeletionSize(arr3));
+    }
+    public int minDeletionSize(String[] A){
+        int count =0;
+        for(int i=0; i<A[0].length(); ++i){
+            for(int j=0; j<A.length-1; ++j){
+                if(A[j].charAt(i) >A[j+1].charAt(i)){
+                    count++;
+                    break;
+                }
+            }
+        }
+        return  count;
+    }
+
+    /*
+    题目很难理解，读了好几遍才有所理解意思，求出删除下标的列，使得数组中剩下的元素，对应下标中的值
+    组成的字符串不是降序的
+     */
+//    public int minDeletionSize(String[] A) {
+//        int count =0;
+//        for(int i=0; i<A[0].length(); ++i){
+//            char left = A[0].charAt(i);
+//            for(int j=1; j<A.length; ++j){
+//                char cur = A[j].charAt(i);
+//                if(left <= cur){
+//                    left = cur;
+//                }else {
+//                    count++;
+//                    break;
+//                }
+//            }
+//        }
+//        return count;
+//    }
+}
+
+```
 
 
 

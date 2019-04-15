@@ -370,6 +370,7 @@ BOOLEAN类型不可以转换为任何其它的类型。
 ```
 CAST('1' AS INT)将把字符串'1' 转换成整数1；如果强制类型转换失败，如执行CAST('X' AS INT)，表达式返回空值 NULL。//a1 不能解析成数字
 select '1'+2, cast('1'as int) + 2;
+//select cast('1' as double);
 ```
 
 
@@ -381,7 +382,7 @@ select '1'+2, cast('1'as int) + 2;
 ```
 CREATE DATABASE [IF NOT EXISTS] database_name
 [COMMENT database_comment] //创建描述信息
-[LOCATION hdfs_path]//指定存储位置
+[LOCATION hdfs_path]//指定存储位置,默认warehouse目录下
 [WITH DBPROPERTIES (property_name=property_value, ...)]; //数据库属性
 ```
 
@@ -632,7 +633,7 @@ hive (default)> desc formatted student2;
 （4）修改外部表student2为内部表
 
 ```
-alter table student2 set tblproperties('EXTERNAL'='FALSE');
+alter table student2 set tblproperties('EXTERNAL'='FALSE'); //必须大写
 ```
 
 （5）查询表的类型
@@ -1499,7 +1500,7 @@ Hive要求DISTRIBUTE BY语句要写在SORT BY语句之前。
 
 ##### 分桶表数据存储
 
-分区时针对数据的存储路径，分桶针对的是数据文件，
+分区表针对数据的存储路径，分桶针对的是数据文件，
 
 创建分桶表时，需要设置一个属性: ==set hive.enforce.bucketing=true;==
 
@@ -2411,4 +2412,20 @@ cuboid=2的n次方
 cube(立方体) = 所有cuboid总和
 
 
+
+
+
+
+
+## Hive SQL练习题
+
+```
+create table student(s_id string,s_name string,s_birth string,s_sex string) row format delimited fields terminated by '\t';
+
+create table course(c_id string,c_name string,t_id string) row format delimited fields terminated by '\t';
+
+create table teacher(t_id string,t_name string) row format delimited fields terminated by '\t';
+
+create table score(s_id string,c_id string,s_score int) row format delimited fields terminated by '\t';
+```
 
