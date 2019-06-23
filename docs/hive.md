@@ -1093,7 +1093,7 @@ export和import主要用于两个Hadoop平台集群之间Hive表迁移。//里�
 
 ### **Sqoop导出**
 
-后续课程专门讲。
+后续单独记录
 
 ## **清除表中数据（Truncate）**
 
