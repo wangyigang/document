@@ -1463,6 +1463,17 @@ hive (default)> select e.empno, e.ename, d.deptno from emp e join dept d on e.de
 
 = d.deptno or e.ename=d.ename;   错误的
 
+##### left semi join 
+
+```
+左半连接 ： 可以使用left semi join 重写你的子查询语句
+限制条件：1.join子句中右边的表只能在ON 子句中设置过滤条件 
+		2. select 后出现的只能是左表中的字段
+性能快的原因： 在join判断的过程中，只要出现满足on条件的，就不会再搜索下面的数据
+```
+
+
+
 #### 排序
 
 ##### 全局排序（Order By）
@@ -1696,7 +1707,7 @@ from business;
 ```
 //前提，必须有序
 NTILE(n)：把有序分区中的行分发到指定数据的组中，各个组有编号，编号从1开始，对于每一行，NTILE返回此行所属的组的编号。注意：n必须为int类型。
-//通过子查询的方式进行
+//通过子查询的方式进行 5个中取1个
 select name, orderdate, cost
 from (select name, orderdate, cost, ntile(5) over(order by orderdate ) num 
 from business) t1 where num =1 ;
@@ -2391,29 +2402,12 @@ over()开窗函数和聚合函数的不同之处是对于每个组返回多行�
 开窗函数over()返回的结果中包含多个组的数据(组是group by分组后的数据) 聚合函数返回的结果只是包含一个组的数据
 ```
 
+##### hive小技巧
 
-
-
-
-## Kylin
-
-查询性能亚秒级
-
-
-
-维度：
-
-度量：聚合的统计值
-
-
-
-cuboid=2的n次方
-
-cube(立方体) = 所有cuboid总和
-
-
-
-
+```
+1.hive中碰到日期相关的可以使用like '2017-04%' 方式 使用正则表达式
+2.count(1) 是1并不是表示字段，而是表示一个固定值，代替*,效率高出很多
+```
 
 
 

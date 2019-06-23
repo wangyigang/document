@@ -1935,12 +1935,12 @@ submit中
 ![1551008326759](assets/1551008326759.png)
 
 ```
-1. 首先准备提交环境
+1. 首先准备提交环境,返回一个元祖，元祖中保存提交的参数
 val (childArgs, childClasspath, sysProps, childMainClass) = prepareSubmitEnvironment(args)
-2. doRunMain ==> runMain ==> 调用org.apache.spark.deploy.yarn.Client类的main方法
+2. doRunMain ==> runMain ==> 调用  org.apache.spark.deploy.yarn.Client类的main方法
 ```
 
-runMain方法
+runMain方法中,设置类加载器加载类，从childClasspath中加载jar包路径,通过反射的方式创建类，获取main方法并执行invoke 
 
 ```
 1. 设置classLoader-类加载器
@@ -1948,7 +1948,7 @@ Thread.currentThread.setContextClassLoader(loader)
 2. ClassForName
 mainClass = Utils.classForName(childMainClass)
 3.invoke进行调用
-mainMethod.invoke(null, childArgs.toArray)
+mainMethod.invoke(null, childArgs.toArray) //通过反射的方式不会创建一个进程
 ```
 
 yarn.Client
@@ -2334,5 +2334,19 @@ textFile文件读取时，使用较小值
  //源码中的体现
  math.min(defaultParallelism, 2)--最小的分区数量，真正使用hadoopfs的切片系统
  //这个是最小分区，但真正的分区可能会比数字大，如果文件大小和个数不能整除，会多出一个分区
+```
+
+
+
+## spark源码分析
+
+```
+1.脚本启动，执行spark-submit里面的main方法
+2.通过反射的方式执行Client里面的main方法
+3.向RM封装并发送执行bin/java ApplicationMaster
+4.RM随机选择一台NM机器启动AM
+5.AM启动Driver线程执行用户的作业
+6.AM向RM进行申请资源，进行本地化比较
+7.
 ```
 

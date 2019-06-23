@@ -1649,6 +1649,16 @@ def test2(): Unit ={
 
 
 
+```
+还有一种情况，在传递函数的时候，把一个函数直接赋值给一个变量，但是不执行函数
+val f1 = myPrint _
+def myPrint():Unit={
+    println("hello world!")
+}
+```
+
+
+
 ##### 类型推断:
 
 作用:  主要起到简写的作用
